@@ -38,15 +38,6 @@ const PURPOSES: Record<ModelPurpose, { tier: "pipeline" | "main"; thinking: Thin
   agent: { tier: "main", thinking: "MEDIUM", maxTokens: 16_000 },
 };
 
-export type ChatModelFactory = (purpose: ModelPurpose) => BaseChatModel;
-
-// Test seam: tests swap in a scripted model so the pipeline and agent can be exercised
-// deterministically, without network calls.
-let override: ChatModelFactory | null = null;
-export function setChatModelFactory(factory: ChatModelFactory | null) {
-  override = factory;
-}
-
 export function modelNameFor(purpose: ModelPurpose): string {
   const env = getEnv();
   return PURPOSES[purpose].tier === "pipeline" ? env.GEMINI_PIPELINE_MODEL : env.GEMINI_MODEL;
@@ -59,7 +50,6 @@ function supportsThinkingLevel(model: string): boolean {
 }
 
 export function getChatModel(purpose: ModelPurpose): BaseChatModel {
-  if (override) return override(purpose);
   const apiKey = getGeminiApiKey();
   if (!apiKey) throw new AiNotConfiguredError();
 

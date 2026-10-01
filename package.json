@@ -8,8 +8,6 @@
     "start": "next start",
     "lint": "eslint",
     "typecheck": "next typegen && tsc --noEmit",
-    "test": "vitest run",
-    "test:watch": "vitest",
     "db:indexes": "tsx --conditions=react-server scripts/db-indexes.ts",
     "ai:process": "tsx --conditions=react-server scripts/process-emails.ts"
   },
@@ -52,11 +50,9 @@
     "dotenv": "^18.0.5",
     "eslint": "^9",
     "eslint-config-next": "16.3.8",
-    "mongodb-memory-server": "^11.3.0",
     "tailwindcss": "^4",
     "tsx": "^4.23.15",
-    "typescript": "^5",
-    "vitest": "^5.0.3"
+    "typescript": "^5"
   },
   "engines": {
     "node": ">=20.9"

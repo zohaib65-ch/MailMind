@@ -1,0 +1,26 @@
+# Optional local services. MailMind is designed for MongoDB Atlas, but this lets you run
+# everything on your machine:
+#
+#   docker compose up -d
+#   MONGODB_URI="mongodb://localhost:27017/?directConnection=true"
+#   REDIS_URL="redis://localhost:6379"
+#
+# `mongodb-atlas-local` is MongoDB with Atlas Search + Vector Search built in, so
+# `npm run db:indexes` can create the real vector index locally.
+services:
+  mongodb:
+    image: mongodb/mongodb-atlas-local:8
+    ports:
+      - "27017:27017"
+    volumes:
+      - mongo-data:/data/db
+      - mongo-config:/data/configdb
+
+  redis:
+    image: redis:7-alpine
+    ports:
+      - "6379:6379"
+
+volumes:
+  mongo-data:
+  mongo-config:
