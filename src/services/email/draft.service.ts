@@ -68,10 +68,17 @@ export async function createDraft(input: {
   const to = input.to?.length ? input.to : replyTo ? [replyTo.from] : [];
   if (!to.length) throw new ValidationError("A draft needs at least one recipient");
 
-  // One open draft per email: a new AI suggestion replaces the previous pending one.
+  // A new AI suggestion replaces the previous *untouched* AI draft for this email. Drafts the
+  // user wrote or edited are never thrown away.
   if (replyTo) {
     await AiDraft.updateMany(
-      { userId: toObjectId(input.userId), emailId: replyTo._id, status: "pending_review" },
+      {
+        userId: toObjectId(input.userId),
+        emailId: replyTo._id,
+        status: "pending_review",
+        source: { $in: ["pipeline", "agent"] },
+        $expr: { $eq: ["$body", "$originalBody"] },
+      },
       { $set: { status: "discarded" } },
     );
   }
@@ -168,8 +175,10 @@ export async function discardDraft(userId: string, draftId: string): Promise<voi
  */
 export async function approveDraft(userId: string, draftId: string, edits: DraftEdits = {}): Promise<IAiDraft> {
   await getOwnedDraft(userId, draftId);
+  // "approved" is accepted too, so a draft whose send never started (e.g. the assistant run
+  // was interrupted) can be approved again instead of getting stuck.
   const approved = await AiDraft.findOneAndUpdate(
-    { _id: toObjectId(draftId), userId: toObjectId(userId), status: { $in: ["pending_review", "failed"] } },
+    { _id: toObjectId(draftId), userId: toObjectId(userId), status: { $in: ["pending_review", "failed", "approved"] } },
     { $set: { ...editsToSet(edits), status: "approved", approvedAt: new Date(), error: null } },
     { returnDocument: "after" },
   ).lean();
@@ -189,20 +198,23 @@ export async function sendApprovedDraft(userId: string, draftId: string): Promis
   ).lean()) as IAiDraft | null;
   if (!draft) throw new ConflictError("Only drafts approved by the user can be sent");
 
+  let sent: Awaited<ReturnType<Awaited<ReturnType<typeof getProviderForAccount>>["sendMessage"]>>;
+  let context: {
+    account: NonNullable<Awaited<ReturnType<typeof loadSendContext>>["account"]>;
+    replyTo: Awaited<ReturnType<typeof loadSendContext>>["replyTo"];
+    from: EmailAddress;
+    references: string[];
+  };
   try {
-    const [account, user, replyTo] = await Promise.all([
-      EmailAccount.findById(draft.accountId).lean(),
-      User.findById(draft.userId).lean(),
-      draft.emailId ? Email.findById(draft.emailId).lean() : null,
-    ]);
+    const { account, user, replyTo } = await loadSendContext(draft);
     if (!account || !user) throw new NotFoundError("Email account");
-
-    const provider = await getProviderForAccount(account);
     const references = replyTo
       ? [...(replyTo.references ?? []), ...(replyTo.messageIdHeader ? [replyTo.messageIdHeader] : [])]
       : [];
     const from = { name: user.name ?? account.displayName, email: account.emailAddress };
-    const sent = await provider.sendMessage({
+    context = { account, replyTo, from, references };
+    const provider = await getProviderForAccount(account);
+    sent = await provider.sendMessage({
       from,
       to: draft.to,
       cc: draft.cc,
@@ -212,16 +224,30 @@ export async function sendApprovedDraft(userId: string, draftId: string): Promis
       references,
       providerThreadId: replyTo?.providerThreadId,
     });
+  } catch (err) {
+    // Nothing was sent, so the user can safely fix the problem and try again.
+    await AiDraft.updateOne({ _id: draft._id, status: "sending" }, { $set: { status: "failed", error: errorMessage(err) } });
+    throw err;
+  }
 
-    // Store our own copy straight away so the thread shows the reply without a re-sync.
-    await storeParsedEmail(account, {
+  // The provider accepted the email: record that FIRST. From here on nothing may mark the
+  // draft "failed", or a retry would send the same email twice.
+  await AiDraft.updateOne(
+    { _id: draft._id },
+    { $set: { status: "sent", sentAt: new Date(), sentProviderMessageId: sent.providerMessageId, error: null } },
+  );
+  log.info("Draft sent", { draftId, provider: context.account.provider });
+
+  // Bookkeeping is best-effort; the next sync repairs anything that fails here.
+  try {
+    await storeParsedEmail(context.account, {
       providerMessageId: sent.providerMessageId,
       providerThreadId: sent.providerThreadId,
       messageIdHeader: sent.messageIdHeader,
-      inReplyTo: replyTo?.messageIdHeader,
-      references,
+      inReplyTo: context.replyTo?.messageIdHeader,
+      references: context.references,
       direction: "outbound",
-      from,
+      from: context.from,
       to: draft.to,
       cc: draft.cc,
       subject: draft.subject,
@@ -233,18 +259,20 @@ export async function sendApprovedDraft(userId: string, draftId: string): Promis
       isImportant: false,
       isArchived: false,
     });
-
-    await AiDraft.updateOne(
-      { _id: draft._id },
-      { $set: { status: "sent", sentAt: new Date(), sentProviderMessageId: sent.providerMessageId } },
-    );
-    if (replyTo) await Email.updateOne({ _id: replyTo._id }, { $set: { replyStatus: "replied" } });
-    log.info("Draft sent", { draftId, provider: account.provider });
-    return getDraft(userId, draftId);
+    if (context.replyTo) await Email.updateOne({ _id: context.replyTo._id }, { $set: { replyStatus: "replied" } });
   } catch (err) {
-    await AiDraft.updateOne({ _id: draft._id }, { $set: { status: "failed", error: errorMessage(err) } });
-    throw err;
+    log.warn("Sent, but saving the local copy failed (next sync will fix it)", { draftId, error: errorMessage(err) });
   }
+  return getDraft(userId, draftId);
+}
+
+async function loadSendContext(draft: IAiDraft) {
+  const [account, user, replyTo] = await Promise.all([
+    EmailAccount.findById(draft.accountId).lean(),
+    User.findById(draft.userId).lean(),
+    draft.emailId ? Email.findById(draft.emailId).lean() : null,
+  ]);
+  return { account, user, replyTo };
 }
 
 /** The "Send" button: the click is the approval. */

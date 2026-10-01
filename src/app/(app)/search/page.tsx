@@ -1,7 +1,8 @@
 import type { Metadata } from "next";
 import { PageHeader } from "@/components/layout/page-header";
 import { SearchView } from "@/components/search/search-view";
-import { getEmbeddingsProviderName, isAiConfigured } from "@/lib/utils/env";
+import { isAiConfigured } from "@/lib/utils/env";
+import { getEmbeddingsInfo } from "@/services/embeddings/providers";
 import { requireUser } from "@/services/auth/dal";
 import { searchEmails } from "@/services/search/search.service";
 import type { SearchMode } from "@/types/email";
@@ -26,7 +27,7 @@ export default async function SearchPage({ searchParams }: PageProps<"/search">)
         results={results}
         engine={engine}
         aiConfigured={isAiConfigured()}
-        embeddingsProvider={getEmbeddingsProviderName() === "voyage" ? "Voyage AI" : "mock (offline)"}
+        embeddingsProvider={`Gemini ${getEmbeddingsInfo().model}`}
       />
     </div>
   );

@@ -15,5 +15,5 @@ export const POST = apiRoute({ rateLimit: RATE_LIMITS.assistant }, async (req, {
   const body = await parseBody(req, ResumeRequestSchema);
   // If the email gets sent, index it and update the thread memory afterwards.
   if (body.decision === "approve") after(() => runPostSyncJobs(user.id));
-  return sseResponse(streamAgentResume({ userId: user.id, ...body, signal: req.signal }));
+  return sseResponse(streamAgentResume({ userId: user.id, ...body, keepAlive: (work) => after(work) }));
 });

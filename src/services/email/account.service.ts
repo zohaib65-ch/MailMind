@@ -1,23 +1,9 @@
 import "server-only";
 import { connectDb, isObjectId, toObjectId } from "@/lib/db/mongoose";
-import {
-  AiConversation,
-  AiDraft,
-  AiTask,
-  Contact,
-  Email,
-  EmailAccount,
-  EmailEmbedding,
-  EmailThread,
-  ToolExecution,
-  User,
-  type IEmailAccount,
-  type IUser,
-} from "@/lib/db/models";
+import { AiDraft, AiTask, Email, EmailAccount, EmailEmbedding, EmailThread, User, type IEmailAccount, type IUser } from "@/lib/db/models";
 import { encrypt } from "@/lib/utils/crypto";
 import { NotFoundError } from "@/lib/utils/errors";
 import type { GoogleIdentity } from "@/services/auth/google-oauth";
-import { MOCK_CONTACTS, MOCK_USER } from "./mock/fixtures";
 
 export type AccountDTO = {
   id: string;
@@ -37,36 +23,6 @@ export async function listAccounts(userId: string): Promise<AccountDTO[]> {
     lastSyncedAt: a.sync?.lastSyncedAt?.toISOString(),
     syncError: a.sync?.error ?? undefined,
   }));
-}
-
-/** Labels the demo contacts (manager, clients, …) so relationship-based requests work. */
-async function seedMockContacts(userId: string) {
-  await Contact.bulkWrite(
-    MOCK_CONTACTS.map((c) => ({
-      updateOne: {
-        filter: { userId: toObjectId(userId), email: c.email },
-        update: { $set: { name: c.name, company: c.company, relationship: c.relationship } },
-        upsert: true,
-      },
-    })),
-  );
-}
-
-/** The Mock Email Mode user ("Sam Taylor") with a mock mailbox. Idempotent. */
-export async function getOrCreateDemoUser(): Promise<IUser> {
-  await connectDb();
-  const user = await User.findOneAndUpdate(
-    { email: MOCK_USER.email },
-    { $setOnInsert: { email: MOCK_USER.email, name: MOCK_USER.name } },
-    { upsert: true, returnDocument: "after" },
-  ).lean();
-  await EmailAccount.updateOne(
-    { userId: user!._id, provider: "mock", emailAddress: MOCK_USER.email },
-    { $setOnInsert: { displayName: MOCK_USER.name, sync: {} } },
-    { upsert: true },
-  );
-  await seedMockContacts(user!._id.toString());
-  return user as IUser;
 }
 
 /** Signs in with Google: creates/updates the user and stores encrypted Gmail tokens. */
@@ -109,20 +65,4 @@ export async function disconnectAccount(userId: string, accountId: string): Prom
   ]);
   await Email.deleteMany({ accountId: account._id });
   await EmailAccount.deleteOne({ _id: account._id });
-}
-
-/** Mock Email Mode: wipe the demo mailbox and AI history so it can be re-synced from scratch. */
-export async function resetMockData(userId: string): Promise<void> {
-  await connectDb();
-  const account = await EmailAccount.findOne({ userId: toObjectId(userId), provider: "mock" }).lean();
-  if (!account) throw new NotFoundError("Mock account");
-  await disconnectAccount(userId, account._id.toString());
-  await Promise.all([
-    AiConversation.deleteMany({ userId: toObjectId(userId) }),
-    ToolExecution.deleteMany({ userId: toObjectId(userId) }),
-    AiTask.deleteMany({ userId: toObjectId(userId) }),
-    User.updateOne({ _id: toObjectId(userId) }, { $set: { memories: [] } }),
-    Contact.deleteMany({ userId: toObjectId(userId) }),
-  ]);
-  await getOrCreateDemoUser();
 }

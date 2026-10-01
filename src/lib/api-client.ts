@@ -1,5 +1,5 @@
 // Browser-side helpers for calling MailMind's API routes. No secrets ever pass through
-// here — the browser only talks to our own /api routes, never to Claude, Voyage or Gmail.
+// here — the browser only talks to our own /api routes, never to Gemini or Gmail.
 
 export class ApiError extends Error {
   constructor(

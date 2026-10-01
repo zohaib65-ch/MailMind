@@ -29,7 +29,6 @@ export default async function SettingsPage() {
   const [settings, accounts, index] = await Promise.all([getUserSettings(user.id), listAccounts(user.id), getIndexStatus(user.id)]);
   const env = getEnv();
   const aiConfigured = isAiConfigured();
-  const hasMock = accounts.some((a) => a.provider === "mock");
 
   return (
     <div className="mx-auto max-w-3xl space-y-6">
@@ -47,7 +46,7 @@ export default async function SettingsPage() {
               <div className="min-w-0 flex-1">
                 <p className="truncate text-sm font-medium">{a.emailAddress}</p>
                 <p className="text-xs text-muted-foreground">
-                  {a.provider === "mock" ? "Mock inbox (demo data)" : "Gmail"}
+                  Gmail
                   {a.lastSyncedAt && (
                     <>
                       {" · synced "}
@@ -57,9 +56,8 @@ export default async function SettingsPage() {
                 </p>
                 {a.syncError && <p className="text-xs text-destructive">{a.syncError}</p>}
               </div>
-              <Badge variant="secondary">{a.provider === "mock" ? "Mock mode" : "Connected"}</Badge>
-              {a.provider === "gmail" && (
-                <ActionButton
+              <Badge variant="secondary">{a.syncError ? "Needs attention" : "Connected"}</Badge>
+              <ActionButton
                   endpoint={`/api/accounts/${a.id}`}
                   label="Disconnect"
                   icon="trash"
@@ -71,10 +69,21 @@ export default async function SettingsPage() {
                     action: "Disconnect",
                   }}
                 />
-              )}
             </div>
           ))}
-          {isGmailConfigured() && !accounts.some((a) => a.provider === "gmail") && (
+          {accounts.length > 0 && (
+            <p className="text-xs text-muted-foreground">
+              {env.GMAIL_POLL_SECONDS
+                ? `New mail is picked up automatically every ${env.GMAIL_POLL_SECONDS} seconds while MailMind is open.`
+                : "Automatic checking is off (GMAIL_POLL_SECONDS=0). Use the Sync button to check for mail."}
+            </p>
+          )}
+          {accounts.some((a) => a.syncError) && (
+            <p className="text-xs text-muted-foreground">
+              If Gmail access was revoked or expired, sign in with Google again to reconnect.
+            </p>
+          )}
+          {isGmailConfigured() && accounts.length === 0 && (
             <Button asChild variant="outline" size="sm">
               <a href="/api/auth/google">
                 <Mail /> Connect Gmail
@@ -91,7 +100,7 @@ export default async function SettingsPage() {
         </CardHeader>
         <CardContent className="space-y-5">
           <div className="flex flex-wrap gap-x-6 gap-y-2 rounded-lg bg-muted/50 p-3">
-            <Status ok={aiConfigured}>{aiConfigured ? "Claude connected" : "ANTHROPIC_API_KEY not set"}</Status>
+            <Status ok={aiConfigured}>{aiConfigured ? "Gemini connected" : "GEMINI_API_KEY not set"}</Status>
             {aiConfigured && (
               <>
                 <span className="text-sm text-muted-foreground">
@@ -125,7 +134,8 @@ export default async function SettingsPage() {
         <CardContent className="space-y-3 text-sm">
           <div className="grid gap-1 sm:grid-cols-2">
             <span className="text-muted-foreground">
-              Provider: <span className="text-foreground">{index.provider === "voyage" ? "Voyage AI" : "Mock (offline, lexical)"}</span>
+              Provider:{" "}
+              <span className="text-foreground">{index.configured ? "Google Gemini" : "not configured (set GEMINI_API_KEY)"}</span>
             </span>
             <span className="text-muted-foreground">
               Model: <code className="text-foreground">{index.model}</code> · {index.dimensions} dims
@@ -141,29 +151,6 @@ export default async function SettingsPage() {
         </CardContent>
       </Card>
 
-      {env.MOCK_EMAIL_MODE && hasMock && (
-        <Card>
-          <CardHeader>
-            <CardTitle>Demo tools</CardTitle>
-            <CardDescription>Mock Email Mode helpers.</CardDescription>
-          </CardHeader>
-          <CardContent className="flex flex-wrap gap-2">
-            <ActionButton endpoint="/api/mock/simulate" label="Simulate a new email" successMessage="New demo email delivered" />
-            <ActionButton
-              endpoint="/api/mock/reset"
-              label="Reset demo data"
-              icon="reset"
-              variant="destructive"
-              successMessage="Demo inbox reset"
-              confirm={{
-                title: "Reset the demo inbox?",
-                description: "This deletes the demo emails, drafts, conversations, saved memories and AI results, then reloads the original demo inbox.",
-                action: "Reset",
-              }}
-            />
-          </CardContent>
-        </Card>
-      )}
     </div>
   );
 }

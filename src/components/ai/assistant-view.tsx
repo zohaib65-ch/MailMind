@@ -154,7 +154,7 @@ export function AssistantView({
 
         {!aiConfigured && (
           <Alert>
-            <AlertDescription>Set ANTHROPIC_API_KEY to use the assistant.</AlertDescription>
+            <AlertDescription>Set GEMINI_API_KEY to use the assistant.</AlertDescription>
           </Alert>
         )}
         <ChatComposer

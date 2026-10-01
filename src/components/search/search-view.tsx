@@ -93,7 +93,7 @@ export function SearchView({
             <CardTitle className="flex items-center gap-2">
               <Sparkles className="size-4 text-primary" /> Ask your inbox
             </CardTitle>
-            <CardDescription>RAG: Claude answers from the most relevant emails only, with citations.</CardDescription>
+            <CardDescription>RAG: Gemini answers from the most relevant emails only, with citations.</CardDescription>
           </CardHeader>
           <CardContent className="space-y-3">
             {!answer && !asking && (

@@ -52,7 +52,7 @@ export function AiStatusIndicator({ aiConfigured, autoProcess }: { aiConfigured:
             <BrainCircuit className="size-3.5" /> AI off
           </Link>
         </TooltipTrigger>
-        <TooltipContent>Set ANTHROPIC_API_KEY to enable classification, summaries and drafts.</TooltipContent>
+        <TooltipContent>Set GEMINI_API_KEY to enable classification, summaries, drafts and semantic search.</TooltipContent>
       </Tooltip>
     );
   }

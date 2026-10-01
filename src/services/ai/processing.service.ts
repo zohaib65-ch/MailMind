@@ -64,13 +64,21 @@ export async function processEmail(
 }
 
 /**
- * Processes pending emails for a user, oldest first. Emails in the same thread are done
- * one after another (so thread memory is built in order); different threads run in
- * parallel, a couple at a time, to stay within API rate limits.
+ * Processes pending emails for a user. Picks the *newest* `limit` pending emails (what you
+ * are most likely to read), then runs them oldest-first so thread memory is built in
+ * conversation order. Emails in the same thread are done one after another; different
+ * threads can run in parallel (`concurrency`, default 1 to stay within Gemini rate limits).
  */
 export async function processPendingEmails(
   userId: string,
-  options: { limit?: number; concurrency?: number } = {},
+  options: {
+    limit?: number;
+    concurrency?: number;
+    /** Only these emails (e.g. the ones a sync just imported). */
+    emailIds?: string[];
+    /** Only emails stored in MailMind after this time. */
+    createdAfter?: Date;
+  } = {},
 ): Promise<{ processed: number; failed: number; skipped: boolean }> {
   if (!isAiConfigured()) return { processed: 0, failed: 0, skipped: true };
   await connectDb();
@@ -80,11 +88,15 @@ export async function processPendingEmails(
   let processed = 0;
   let failed = 0;
   try {
-    const pending = await Email.find({ userId: toObjectId(userId), "ai.status": "pending" })
-      .sort({ receivedAt: 1 })
+    const filter: Record<string, unknown> = { userId: toObjectId(userId), "ai.status": "pending" };
+    if (options.emailIds) filter._id = { $in: options.emailIds.filter(isObjectId).map(toObjectId) };
+    if (options.createdAfter) filter.createdAt = { $gt: options.createdAfter };
+    const newest = await Email.find(filter)
+      .sort({ receivedAt: -1 })
       .limit(options.limit ?? 50)
       .select("_id threadId")
       .lean();
+    const pending = newest.reverse();
 
     const byThread = new Map<string, string[]>();
     for (const e of pending) {
@@ -94,7 +106,7 @@ export async function processPendingEmails(
     const queues = [...byThread.values()];
     let next = 0;
     await Promise.all(
-      Array.from({ length: Math.min(options.concurrency ?? 2, queues.length) }, async () => {
+      Array.from({ length: Math.min(options.concurrency ?? 1, queues.length) }, async () => {
         while (next < queues.length) {
           const queue = queues[next++]!;
           for (const emailId of queue) {

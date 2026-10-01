@@ -27,28 +27,36 @@ const envSchema = z.object({
   /** 32 bytes, base64 or hex. Encrypts OAuth tokens at rest. */
   ENCRYPTION_KEY: z.string().optional(),
 
-  // ── Email ──
-  /** Mock mode lets you develop without connecting a real inbox. */
-  MOCK_EMAIL_MODE: boolish.default(true),
+  // ── Gmail (Google OAuth) ──
   GOOGLE_CLIENT_ID: z.string().optional(),
   GOOGLE_CLIENT_SECRET: z.string().optional(),
   GOOGLE_REDIRECT_URI: z.string().url().optional(),
+  /** How many days of mail the first sync imports. */
+  GMAIL_INITIAL_SYNC_DAYS: z.coerce.number().int().min(1).max(365).default(30),
+  /** Upper bound on messages imported by one sync run. */
+  GMAIL_SYNC_MAX_MESSAGES: z.coerce.number().int().min(10).max(2000).default(200),
+  /** How often open browser tabs ask the server to check Gmail for new mail. 0 = off. */
+  GMAIL_POLL_SECONDS: z.coerce.number().int().min(0).default(60),
 
-  // ── AI ──
-  ANTHROPIC_API_KEY: z.string().optional(),
-  ANTHROPIC_MODEL: z.string().default("claude-opus-5-5"),
-  /** Model for the per-email pipeline steps. Defaults to ANTHROPIC_MODEL. */
-  ANTHROPIC_PIPELINE_MODEL: z.string().optional(),
-  /** Server-side refusal fallbacks for single-shot calls (see lib/langchain/model.ts). */
-  ANTHROPIC_REFUSAL_FALLBACKS: boolish.default(true),
+  // ── AI: Google Gemini ──
+  /** Gemini API key from Google AI Studio. GOOGLE_API_KEY is accepted as an alias. */
+  GEMINI_API_KEY: z.string().optional(),
+  GOOGLE_API_KEY: z.string().optional(),
+  /** Model for the agent, reply drafts and RAG answers. */
+  GEMINI_MODEL: z.string().default("gemini-3.5-flash"),
+  /** Model for the per-email pipeline steps (classify, extract, summarise, urgency, memory). */
+  GEMINI_PIPELINE_MODEL: z.string().default("gemini-3.5-flash-lite"),
   /** Run the AI pipeline automatically after new emails are synced. */
   AI_AUTO_PROCESS: boolish.default(true),
+  /**
+   * Max emails the automatic pipeline analyses per run (newest first). Keeps a big first
+   * Gmail import from burning through the Gemini quota; the rest can be analysed on demand.
+   */
+  AI_AUTO_PROCESS_LIMIT: z.coerce.number().int().min(0).default(25),
 
-  // ── Embeddings ──
-  EMBEDDINGS_PROVIDER: z.enum(["voyage", "mock"]).optional(),
-  VOYAGE_API_KEY: z.string().optional(),
-  VOYAGE_MODEL: z.string().default("voyage-3.5"),
-  VOYAGE_DIMENSIONS: z.coerce.number().int().positive().default(1024),
+  // ── Embeddings (semantic search) ──
+  GEMINI_EMBEDDING_MODEL: z.string().default("gemini-embedding-2"),
+  EMBEDDING_DIMENSIONS: z.coerce.number().int().positive().default(768),
   ATLAS_VECTOR_INDEX: z.string().default("email_embeddings_vector"),
 
   // ── Redis (optional) ──
@@ -73,16 +81,17 @@ export function getEnv(): Env {
   return cached;
 }
 
+/** The Gemini key, from GEMINI_API_KEY or GOOGLE_API_KEY. */
+export function getGeminiApiKey(): string | undefined {
+  const env = getEnv();
+  return env.GEMINI_API_KEY || env.GOOGLE_API_KEY || undefined;
+}
+
 export function isAiConfigured(): boolean {
-  return Boolean(getEnv().ANTHROPIC_API_KEY);
+  return Boolean(getGeminiApiKey());
 }
 
 export function isGmailConfigured(): boolean {
   const env = getEnv();
   return Boolean(env.GOOGLE_CLIENT_ID && env.GOOGLE_CLIENT_SECRET);
-}
-
-export function getEmbeddingsProviderName(): "voyage" | "mock" {
-  const env = getEnv();
-  return env.EMBEDDINGS_PROVIDER ?? (env.VOYAGE_API_KEY ? "voyage" : "mock");
 }

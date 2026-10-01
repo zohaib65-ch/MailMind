@@ -9,7 +9,7 @@ import { Button } from "@/components/ui/button";
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
 import { AiStatusIndicator } from "./ai-status-indicator";
 import { SidebarNav, type SidebarCounts } from "./app-sidebar";
-import { SyncButton } from "./sync-button";
+import { MailSync } from "./mail-sync";
 import { UserMenu } from "./user-menu";
 
 export function AppHeader({
@@ -17,11 +17,13 @@ export function AppHeader({
   counts,
   aiConfigured,
   autoProcess,
+  pollSeconds,
 }: {
   user: { name: string; email: string };
   counts: SidebarCounts;
   aiConfigured: boolean;
   autoProcess: boolean;
+  pollSeconds: number;
 }) {
   const router = useRouter();
   const [open, setOpen] = useState(false);
@@ -51,7 +53,7 @@ export function AppHeader({
         <div className="hidden sm:block">
           <AiStatusIndicator aiConfigured={aiConfigured} autoProcess={autoProcess} />
         </div>
-        <SyncButton />
+        <MailSync pollSeconds={pollSeconds} />
         <UserMenu user={user} />
       </div>
     </header>

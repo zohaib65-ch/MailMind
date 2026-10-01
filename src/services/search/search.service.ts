@@ -4,10 +4,14 @@ import { Email, type IEmail } from "@/lib/db/models";
 import { vectorSearch } from "@/lib/vector/atlas-vector";
 import { cacheGet, cacheSet } from "@/lib/utils/cache";
 import { sha256 } from "@/lib/utils/crypto";
+import { errorMessage } from "@/lib/utils/errors";
+import { createLogger } from "@/lib/utils/logger";
 import { getEmbeddingsConfig } from "@/services/embeddings/providers";
 import { toEmailListItem } from "@/services/email/dto";
 import type { SearchMode, SearchResultDTO } from "@/types/email";
 import { reciprocalRankFusion } from "./rrf";
+
+const log = createLogger("search");
 
 type Ranked = { id: string; score: number; excerpt?: string };
 
@@ -63,10 +67,18 @@ export async function searchEmails(
   const mode = options.mode ?? "hybrid";
   const limit = Math.min(options.limit ?? 20, 50);
 
-  const [keyword, semantic] = await Promise.all([
+  const [keyword, semanticOrNull] = await Promise.all([
     mode === "semantic" ? Promise.resolve([] as Ranked[]) : keywordSearch(userId, query, limit),
-    mode === "keyword" ? Promise.resolve(null) : semanticSearch(userId, query, limit),
+    mode === "keyword"
+      ? Promise.resolve(null)
+      : semanticSearch(userId, query, limit).catch((err) => {
+          // Semantic-only search has nothing to fall back to; hybrid degrades to keyword.
+          if (mode === "semantic") throw err;
+          log.warn("Semantic search unavailable, using keyword results only", { error: errorMessage(err) });
+          return { ranked: [] as Ranked[], engine: undefined };
+        }),
   ]);
+  const semantic = semanticOrNull;
 
   let ordered: { id: string; score: number; matchedBy: ("keyword" | "semantic")[]; excerpt?: string }[];
   if (mode === "keyword") {

@@ -7,7 +7,7 @@ import { sha256 } from "@/lib/utils/crypto";
 import { stripQuotedReply } from "@/lib/utils/email-text";
 import { errorMessage } from "@/lib/utils/errors";
 import { createLogger } from "@/lib/utils/logger";
-import { getEmbeddingsConfig } from "./providers";
+import { getEmbeddingsConfig, getEmbeddingsInfo, isEmbeddingsConfigured } from "./providers";
 
 const log = createLogger("embeddings");
 
@@ -62,6 +62,7 @@ export async function indexEmail(email: IEmail): Promise<number> {
  * need the LLM, so semantic search works even before the AI pipeline has run.
  */
 export async function indexPendingEmails(userId: string, options: { limit?: number } = {}) {
+  if (!isEmbeddingsConfigured()) return { indexed: 0, failed: 0, skipped: true };
   await connectDb();
   const release = await acquireLock(`embed:${userId}`, 15 * 60);
   if (!release) return { indexed: 0, failed: 0, skipped: true };
@@ -91,11 +92,11 @@ export async function indexPendingEmails(userId: string, options: { limit?: numb
 
 export async function getIndexStatus(userId: string) {
   await connectDb();
-  const { model, provider, dimensions } = getEmbeddingsConfig();
+  const { model, provider, dimensions, configured } = getEmbeddingsInfo();
   const [total, indexed, chunks] = await Promise.all([
     Email.countDocuments({ userId: toObjectId(userId) }),
     Email.countDocuments({ userId: toObjectId(userId), "embedding.model": model }),
     EmailEmbedding.countDocuments({ userId: toObjectId(userId), model }),
   ]);
-  return { provider, model, dimensions, total, indexed, chunks };
+  return { provider, model, dimensions, configured, total, indexed, chunks };
 }

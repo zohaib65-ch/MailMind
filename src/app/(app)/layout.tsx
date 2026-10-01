@@ -11,9 +11,15 @@ export default async function AppLayout({ children }: LayoutProps<"/">) {
 
   return (
     <div className="flex min-h-screen">
-      <AppSidebar counts={counts} mockMode={getEnv().MOCK_EMAIL_MODE} />
+      <AppSidebar counts={counts} />
       <div className="flex min-w-0 flex-1 flex-col">
-        <AppHeader user={user} counts={counts} aiConfigured={isAiConfigured()} autoProcess={getEnv().AI_AUTO_PROCESS} />
+        <AppHeader
+          user={user}
+          counts={counts}
+          aiConfigured={isAiConfigured()}
+          autoProcess={getEnv().AI_AUTO_PROCESS}
+          pollSeconds={getEnv().GMAIL_POLL_SECONDS}
+        />
         <main className="flex-1 px-4 py-6 md:px-8">{children}</main>
       </div>
     </div>

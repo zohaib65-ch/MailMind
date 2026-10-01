@@ -62,8 +62,19 @@ export function stripQuotedReply(text: string): string {
  * Body text prepared for an LLM prompt: quoted replies stripped, then length-capped.
  * The cap is explicit (with a marker) rather than silent, so the model knows text is missing.
  */
+/** Tag names MailMind uses to fence untrusted content inside prompts. */
+const PROMPT_TAGS = /<(\/?)(email|thread|memory|source|sources|user_notes|body)\b/gi;
+
+/**
+ * Stops email text from closing (or opening) the tags our prompts use to fence it, e.g. a
+ * body containing "</email>" followed by fake instructions. The text stays readable.
+ */
+export function neutralizePromptTags(text: string): string {
+  return text.replace(PROMPT_TAGS, "‹$1$2");
+}
+
 export function bodyForAi(text: string, maxChars = 12_000): string {
-  const clean = stripQuotedReply(text) || normalizeWhitespace(text);
+  const clean = neutralizePromptTags(stripQuotedReply(text) || normalizeWhitespace(text));
   if (clean.length <= maxChars) return clean;
   return `${clean.slice(0, maxChars)}\n\n[... ${clean.length - maxChars} more characters omitted ...]`;
 }

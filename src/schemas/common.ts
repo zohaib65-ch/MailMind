@@ -66,7 +66,7 @@ export const CONTACT_RELATIONSHIPS = [
 export type ContactRelationship = (typeof CONTACT_RELATIONSHIPS)[number];
 export const ContactRelationshipSchema = z.enum(CONTACT_RELATIONSHIPS);
 
-export const EMAIL_PROVIDERS = ["mock", "gmail"] as const;
+export const EMAIL_PROVIDERS = ["gmail"] as const;
 export type EmailProviderName = (typeof EMAIL_PROVIDERS)[number];
 
 export const EmailAddressSchema = z.object({

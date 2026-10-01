@@ -23,8 +23,16 @@ type PublicHandlerContext<P> = { user: SessionUser | null; params: P };
 
 const MUTATING = new Set(["POST", "PUT", "PATCH", "DELETE"]);
 
+/**
+ * Client IP for rate limiting. `X-Real-IP` is set by the hosting proxy (Vercel, nginx) and
+ * can't be spoofed by the client. Otherwise use the LAST `X-Forwarded-For` hop — the one our
+ * own proxy appended — because the first hop is whatever the client chose to send.
+ */
 function clientIp(req: NextRequest): string {
-  return req.headers.get("x-forwarded-for")?.split(",")[0]?.trim() || req.headers.get("x-real-ip") || "unknown";
+  const realIp = req.headers.get("x-real-ip")?.trim();
+  if (realIp) return realIp;
+  const hops = req.headers.get("x-forwarded-for")?.split(",").map((h) => h.trim()).filter(Boolean) ?? [];
+  return hops.at(-1) ?? "unknown";
 }
 
 function assertSameOrigin(req: NextRequest) {

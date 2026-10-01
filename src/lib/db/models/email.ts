@@ -52,7 +52,7 @@ export interface IEmail {
   snippet: string;
   bodyText: string;
   receivedAt: Date;
-  /** Provider labels (Gmail labels / mock folders), stored by name. */
+  /** Gmail labels, stored by name. */
   labels: string[];
   isRead: boolean;
   isArchived: boolean;

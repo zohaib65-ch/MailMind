@@ -52,7 +52,7 @@ export class RateLimitError extends AppError {
 
 export class AiNotConfiguredError extends AppError {
   constructor() {
-    super("AI is not configured. Set ANTHROPIC_API_KEY in your .env file.", 503, "ai_not_configured");
+    super("AI is not configured. Set GEMINI_API_KEY in your .env file.", 503, "ai_not_configured");
   }
 }
 

@@ -32,8 +32,11 @@ export const GET = apiRoute({ public: true, rateLimit: RATE_LIMITS.auth }, async
     await createSession(userId, req.headers.get("user-agent"));
     // First sync and AI processing run after the redirect, so sign-in feels instant.
     after(async () => {
-      await syncUser(userId).catch((err) => log.warn("Initial Gmail sync failed", { error: errorMessage(err) }));
-      await runPostSyncJobs(userId);
+      const results = await syncUser(userId).catch((err) => {
+        log.warn("Initial Gmail sync failed", { error: errorMessage(err) });
+        return [];
+      });
+      await runPostSyncJobs(userId, { emailIds: results.flatMap((r) => r.createdEmailIds) });
     });
     return NextResponse.redirect(new URL("/dashboard", req.url));
   } catch (err) {

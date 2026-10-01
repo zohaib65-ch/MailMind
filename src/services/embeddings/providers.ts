@@ -1,156 +1,124 @@
 import "server-only";
 import { Embeddings, type EmbeddingsParams } from "@langchain/core/embeddings";
-import { VoyageAIClient } from "voyageai";
-import { getEmbeddingsProviderName, getEnv } from "@/lib/utils/env";
+import { getEnv, getGeminiApiKey } from "@/lib/utils/env";
 import { AppError } from "@/lib/utils/errors";
 
 /**
- * Embedding providers, implemented as LangChain `Embeddings` so they plug into any
- * LangChain retriever or vector store.
+ * Gemini embeddings, implemented as a LangChain `Embeddings` so they plug into any
+ * LangChain retriever or vector store. Uses the same Gemini API key as the chat models.
  *
- *  - Voyage AI (recommended, the embedding provider Anthropic recommends): real semantic
- *    vectors. Set VOYAGE_API_KEY.
- *  - Mock: offline, deterministic "hashing" embeddings for development without a key.
- *    These are lexical with a small synonym table — good enough to demo the plumbing,
- *    not a substitute for a real model.
+ * Two details that matter for retrieval quality:
+ *  - Task types: emails are embedded as RETRIEVAL_DOCUMENT and search queries as
+ *    RETRIEVAL_QUERY. Gemini optimises each side for the other.
+ *  - Size: `outputDimensionality` truncates the vector (Matryoshka embeddings). We
+ *    re-normalise afterwards so cosine similarity and dot product agree.
  */
 
-export class VoyageEmbeddings extends Embeddings {
-  private readonly client: VoyageAIClient;
+const API_BASE = "https://generativelanguage.googleapis.com/v1beta";
+/** batchEmbedContents accepts up to 100 inputs per request. */
+const BATCH_SIZE = 100;
 
+type TaskType = "RETRIEVAL_DOCUMENT" | "RETRIEVAL_QUERY";
+
+class GeminiApiError extends Error {
+  constructor(
+    message: string,
+    readonly status: number,
+  ) {
+    super(message);
+  }
+}
+
+function normalize(vector: number[]): number[] {
+  const norm = Math.sqrt(vector.reduce((sum, v) => sum + v * v, 0)) || 1;
+  return vector.map((v) => v / norm);
+}
+
+export class GeminiEmbeddings extends Embeddings {
   constructor(
     private readonly options: { apiKey: string; model: string; dimensions: number },
     params: EmbeddingsParams = {},
   ) {
-    super({ maxRetries: 3, ...params });
-    this.client = new VoyageAIClient({ apiKey: options.apiKey });
+    // AsyncCaller retries failures with exponential backoff (429s on free-tier keys).
+    super({
+      maxRetries: 6,
+      maxConcurrency: 2,
+      onFailedAttempt: (err: unknown) => {
+        // Don't retry requests that can never succeed (bad key, bad request).
+        if (err instanceof GeminiApiError && [400, 401, 403, 404].includes(err.status)) throw err;
+      },
+      ...params,
+    });
   }
 
-  private async embed(texts: string[], inputType: "document" | "query"): Promise<number[][]> {
+  private async batch(texts: string[], taskType: TaskType): Promise<number[][]> {
+    const model = `models/${this.options.model}`;
+    const res = await fetch(`${API_BASE}/${model}:batchEmbedContents`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json", "x-goog-api-key": this.options.apiKey },
+      body: JSON.stringify({
+        requests: texts.map((text) => ({
+          model,
+          content: { parts: [{ text }] },
+          taskType,
+          outputDimensionality: this.options.dimensions,
+        })),
+      }),
+    });
+    if (!res.ok) {
+      const body = (await res.json().catch(() => null)) as { error?: { message?: string } } | null;
+      throw new GeminiApiError(`Gemini embeddings failed (${res.status}): ${body?.error?.message ?? res.statusText}`, res.status);
+    }
+    const data = (await res.json()) as { embeddings?: { values?: number[] }[] };
+    const vectors = (data.embeddings ?? []).map((e) => e.values ?? []);
+    if (vectors.length !== texts.length || vectors.some((v) => v.length !== this.options.dimensions)) {
+      throw new AppError("Gemini returned an unexpected embeddings response", 502);
+    }
+    return vectors.map(normalize);
+  }
+
+  private async embed(texts: string[], taskType: TaskType): Promise<number[][]> {
     const out: number[][] = [];
-    // Voyage accepts up to 128 inputs per request.
-    for (let i = 0; i < texts.length; i += 128) {
-      const batch = texts.slice(i, i + 128);
-      const res = await this.caller.call(() =>
-        this.client.embed({
-          input: batch,
-          model: this.options.model,
-          inputType,
-          outputDimension: this.options.dimensions,
-        }),
-      );
-      const rows = [...(res.data ?? [])].sort((a, b) => (a.index ?? 0) - (b.index ?? 0));
-      for (const row of rows) {
-        if (!row.embedding) throw new AppError("Voyage returned an empty embedding", 502);
-        out.push(row.embedding);
-      }
+    for (let i = 0; i < texts.length; i += BATCH_SIZE) {
+      const slice = texts.slice(i, i + BATCH_SIZE);
+      out.push(...(await this.caller.call(() => this.batch(slice, taskType))));
     }
     return out;
   }
 
   embedDocuments(documents: string[]): Promise<number[][]> {
-    return this.embed(documents, "document");
+    return this.embed(documents, "RETRIEVAL_DOCUMENT");
   }
 
   async embedQuery(query: string): Promise<number[]> {
-    return (await this.embed([query], "query"))[0]!;
+    return (await this.embed([query], "RETRIEVAL_QUERY"))[0]!;
   }
 }
 
-// ─── Mock (offline) embeddings ────────────────────────────────────────────────
-
-const STOPWORDS = new Set(
-  "a an and are as at be but by for from has have i if in into is it its me my of on or our so that the their them then there these they this to us was we were will with you your yours can could would should please just also".split(
-    " ",
-  ),
-);
-
-/** Maps related words onto one "concept" token so they land in the same vector bucket. */
-const CONCEPTS: Record<string, string> = {
-  payment: "payment", pay: "payment", paid: "payment", invoice: "payment", billing: "payment", bill: "payment",
-  billed: "payment", charge: "payment", charged: "payment", refund: "payment", receipt: "payment", transfer: "payment",
-  card: "payment", subscription: "payment", price: "payment", pricing: "payment",
-  fail: "problem", failed: "problem", failure: "problem", declined: "problem", bounced: "problem", rejected: "problem",
-  problem: "problem", issue: "problem", bug: "problem", broken: "problem", error: "problem", trouble: "problem",
-  twice: "problem", duplicate: "problem", blocking: "problem",
-  interview: "hiring", candidate: "hiring", recruiter: "hiring", hiring: "hiring", panel: "hiring",
-  meeting: "meeting", call: "meeting", sync: "meeting", demo: "meeting", schedule: "meeting", scheduled: "meeting",
-  deliver: "delivery", delivery: "delivery", deadline: "delivery", due: "delivery", ship: "delivery", shipped: "delivery",
-  launch: "delivery", friday: "delivery",
-  security: "security", password: "security", verify: "security", suspicious: "security", unusual: "security",
-  login: "security", sign: "security",
-};
-
-function stem(word: string): string {
-  if (word.length > 5 && word.endsWith("ing")) return word.slice(0, -3);
-  if (word.length > 4 && word.endsWith("ed")) return word.slice(0, -2);
-  if (word.length > 3 && word.endsWith("s") && !word.endsWith("ss")) return word.slice(0, -1);
-  return word;
-}
-
-function fnv1a(text: string): number {
-  let hash = 0x811c9dc5;
-  for (let i = 0; i < text.length; i++) {
-    hash ^= text.charCodeAt(i);
-    hash = Math.imul(hash, 0x01000193);
-  }
-  return hash >>> 0;
-}
-
-export class MockEmbeddings extends Embeddings {
-  constructor(readonly dimensions = 384) {
-    super({});
-  }
-
-  private vector(text: string): number[] {
-    const words = text
-      .toLowerCase()
-      .split(/[^a-z0-9]+/)
-      .filter((w) => w.length > 1 && !STOPWORDS.has(w));
-    // Feature presence (not counts), so long emails and repeated words don't dominate.
-    const features = new Map<string, number>();
-    words.forEach((word, i) => {
-      const s = stem(word);
-      features.set(`w:${s}`, 1);
-      const concept = CONCEPTS[word] ?? CONCEPTS[s];
-      if (concept) features.set(`c:${concept}`, 2.5);
-      if (i > 0) features.set(`b:${stem(words[i - 1]!)}_${s}`, 0.5);
-    });
-    const vec = new Array<number>(this.dimensions).fill(0);
-    for (const [feature, weight] of features) {
-      const h = fnv1a(feature);
-      vec[h % this.dimensions]! += (h & 0x80000000 ? -1 : 1) * weight;
-    }
-    const norm = Math.sqrt(vec.reduce((sum, v) => sum + v * v, 0)) || 1;
-    return vec.map((v) => v / norm);
-  }
-
-  async embedDocuments(documents: string[]): Promise<number[][]> {
-    return documents.map((d) => this.vector(d));
-  }
-
-  async embedQuery(query: string): Promise<number[]> {
-    return this.vector(query);
-  }
-}
-
-export type EmbeddingsConfig = { embeddings: Embeddings; model: string; dimensions: number; provider: "voyage" | "mock" };
+export type EmbeddingsConfig = { embeddings: Embeddings; model: string; dimensions: number; provider: "gemini" };
 
 let cached: EmbeddingsConfig | undefined;
 
+export function isEmbeddingsConfigured(): boolean {
+  return Boolean(getGeminiApiKey());
+}
+
 export function getEmbeddingsConfig(): EmbeddingsConfig {
   if (cached) return cached;
+  const apiKey = getGeminiApiKey();
+  if (!apiKey) throw new AppError("Semantic search needs GEMINI_API_KEY", 503, "embeddings_not_configured");
   const env = getEnv();
-  if (getEmbeddingsProviderName() === "voyage") {
-    if (!env.VOYAGE_API_KEY) throw new AppError("EMBEDDINGS_PROVIDER=voyage needs VOYAGE_API_KEY", 503, "embeddings_not_configured");
-    cached = {
-      provider: "voyage",
-      model: env.VOYAGE_MODEL,
-      dimensions: env.VOYAGE_DIMENSIONS,
-      embeddings: new VoyageEmbeddings({ apiKey: env.VOYAGE_API_KEY, model: env.VOYAGE_MODEL, dimensions: env.VOYAGE_DIMENSIONS }),
-    };
-  } else {
-    cached = { provider: "mock", model: "mock-hash-384", dimensions: 384, embeddings: new MockEmbeddings(384) };
-  }
+  cached = {
+    provider: "gemini",
+    model: env.GEMINI_EMBEDDING_MODEL,
+    dimensions: env.EMBEDDING_DIMENSIONS,
+    embeddings: new GeminiEmbeddings({ apiKey, model: env.GEMINI_EMBEDDING_MODEL, dimensions: env.EMBEDDING_DIMENSIONS }),
+  };
   return cached;
+}
+
+/** Model + dimensions without requiring a key (for status displays). */
+export function getEmbeddingsInfo(): { provider: "gemini"; model: string; dimensions: number; configured: boolean } {
+  const env = getEnv();
+  return { provider: "gemini", model: env.GEMINI_EMBEDDING_MODEL, dimensions: env.EMBEDDING_DIMENSIONS, configured: isEmbeddingsConfigured() };
 }

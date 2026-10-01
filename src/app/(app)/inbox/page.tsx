@@ -5,7 +5,7 @@ import { InboxActions } from "@/components/inbox/inbox-actions";
 import { InboxFilters } from "@/components/inbox/inbox-filters";
 import { Pagination } from "@/components/inbox/pagination";
 import { PageHeader } from "@/components/layout/page-header";
-import { getEnv, isAiConfigured } from "@/lib/utils/env";
+import { isAiConfigured } from "@/lib/utils/env";
 import { InboxQuerySchema } from "@/schemas/api";
 import { getProcessingStatus } from "@/services/ai/processing.service";
 import { requireUser } from "@/services/auth/dal";
@@ -32,7 +32,7 @@ export default async function InboxPage({ searchParams }: PageProps<"/inbox">) {
       <PageHeader
         title="Inbox"
         description={`${result.total} email${result.total === 1 ? "" : "s"}${query.q ? ` matching “${query.q}”` : ""}`}
-        actions={<InboxActions mockMode={getEnv().MOCK_EMAIL_MODE} aiConfigured={aiConfigured} pending={status.pending} />}
+        actions={<InboxActions aiConfigured={aiConfigured} pending={status.pending} />}
       />
       {!aiConfigured && <AiNotConfiguredNotice />}
       <InboxFilters />

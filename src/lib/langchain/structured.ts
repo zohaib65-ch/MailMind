@@ -19,11 +19,16 @@ function usageOf(message: AIMessage | undefined): TokenUsage {
   };
 }
 
-/** Stop reasons that mean "there is no usable answer in this response". */
+/** Gemini finish reasons that mean the model blocked the content rather than answering. */
+const BLOCKED_FINISH_REASONS = new Set(["SAFETY", "PROHIBITED_CONTENT", "BLOCKLIST", "SPII", "RECITATION", "IMAGE_SAFETY"]);
+
+/** Finish reasons that mean "there is no usable answer in this response". */
 function assertUsableStop(message: AIMessage) {
-  const stopReason = message.response_metadata?.stop_reason as string | undefined;
-  if (stopReason === "refusal") throw new AiOutputError("The model declined to process this content.");
-  if (stopReason === "max_tokens") throw new AiOutputError("The model ran out of output tokens before finishing.");
+  const finishReason = message.response_metadata?.finish_reason as string | undefined;
+  if (finishReason && BLOCKED_FINISH_REASONS.has(finishReason)) {
+    throw new AiOutputError(`The model declined to process this content (${finishReason.toLowerCase()}).`);
+  }
+  if (finishReason === "MAX_TOKENS") throw new AiOutputError("The model ran out of output tokens before finishing.");
 }
 
 function parseJson(text: string): unknown {
@@ -32,10 +37,11 @@ function parseJson(text: string): unknown {
 }
 
 /**
- * Prompt template → Claude → Zod-validated object.
+ * Prompt template → Gemini → Zod-validated object.
  *
  * Uses LangChain's `withStructuredOutput(schema, { method: "jsonSchema" })`, which sends the
- * schema as Anthropic's native structured-output format so decoding is constrained to it.
+ * schema as Gemini's `responseJsonSchema` (with `responseMimeType: application/json`), so
+ * decoding is constrained to it.
  * The result is then validated against the Zod schema. If validation still fails (some
  * constraints are advisory to the model), we retry once and tell the model what was wrong.
  */
@@ -63,7 +69,7 @@ export async function invokeStructured<S extends z.ZodType>(options: {
     usage.inputTokens += u.inputTokens;
     usage.outputTokens += u.outputTokens;
     assertUsableStop(raw);
-    const modelName = (raw.response_metadata?.model as string | undefined) ?? modelNameFor(purpose);
+    const modelName = modelNameFor(purpose);
 
     // LangChain already validated `parsed` with the Zod schema; parse again to apply
     // transforms/defaults and to get a precise error message when it is missing.

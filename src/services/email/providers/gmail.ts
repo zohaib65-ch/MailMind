@@ -8,12 +8,30 @@ import { EmailProviderError, errorMessage } from "@/lib/utils/errors";
 import { createLogger } from "@/lib/utils/logger";
 import { createOAuthClient } from "@/services/auth/google-oauth";
 import { buildMimeMessage } from "../mime";
-import type { EmailProvider, ListMessagesResult, OutgoingMessage, ProviderMessage, SentMessage } from "./types";
+import type {
+  ChangesResult,
+  EmailProvider,
+  ListMessagesResult,
+  MailboxStateUpdate,
+  OutgoingMessage,
+  ProviderMessage,
+  SentMessage,
+} from "./types";
 
 const log = createLogger("gmail");
 
 /** Gmail system labels we care about. MailMind's "important" maps to Gmail's star. */
 const IMPORTANT_LABEL = "STARRED";
+/** Messages with these labels are not mail MailMind should import. */
+const SKIP_LABELS = ["SPAM", "TRASH", "DRAFT", "CHAT"];
+/** Above this many new messages in one history window, a windowed re-sync is cheaper. */
+const MAX_HISTORY_MESSAGES = 500;
+
+function httpStatus(err: unknown): number | undefined {
+  const e = err as { code?: unknown; status?: unknown; response?: { status?: unknown } };
+  const status = e?.response?.status ?? e?.status ?? e?.code;
+  return typeof status === "number" ? status : undefined;
+}
 
 function decodeBase64Url(data: string): string {
   return Buffer.from(data.replace(/-/g, "+").replace(/_/g, "/"), "base64").toString("utf8");
@@ -93,15 +111,24 @@ export class GmailProvider implements EmailProvider {
     return this.labelNames;
   }
 
+  private stateOf(message: gmail_v1.Schema$Message, labels: Map<string, string>): MailboxStateUpdate {
+    const labelIds = message.labelIds ?? [];
+    return {
+      providerMessageId: message.id ?? "",
+      labels: labelIds.map((id) => labels.get(id) ?? id),
+      isRead: !labelIds.includes("UNREAD"),
+      isImportant: labelIds.includes(IMPORTANT_LABEL),
+      isArchived: !labelIds.includes("INBOX") && !labelIds.includes("SENT"),
+    };
+  }
+
   private toProviderMessage(message: gmail_v1.Schema$Message, labels: Map<string, string>): ProviderMessage {
     const headers = message.payload?.headers;
     const bodies: { text?: string; html?: string } = {};
     collectBodies(message.payload, bodies);
-    const labelIds = message.labelIds ?? [];
     const from = parseAddressList(header(headers, "From"))[0] ?? { email: "unknown@unknown" };
     const date = header(headers, "Date");
     return {
-      providerMessageId: message.id ?? "",
       providerThreadId: message.threadId ?? message.id ?? "",
       messageIdHeader: header(headers, "Message-ID") ?? header(headers, "Message-Id"),
       inReplyTo: header(headers, "In-Reply-To"),
@@ -113,20 +140,28 @@ export class GmailProvider implements EmailProvider {
       date: message.internalDate ? new Date(Number(message.internalDate)) : date ? new Date(date) : new Date(),
       textBody: bodies.text,
       htmlBody: bodies.html,
-      labels: labelIds.map((id) => labels.get(id) ?? id),
-      isRead: !labelIds.includes("UNREAD"),
-      isImportant: labelIds.includes(IMPORTANT_LABEL),
-      isArchived: !labelIds.includes("INBOX") && !labelIds.includes("SENT"),
+      ...this.stateOf(message, labels),
     };
   }
 
-  async listMessages(options: { since?: Date; maxResults: number; pageToken?: string }): Promise<ListMessagesResult> {
-    const query = [
-      options.since ? `after:${Math.floor(options.since.getTime() / 1000)}` : "newer_than:30d",
-      "-in:chats",
-      "-in:spam",
-      "-in:trash",
-    ].join(" ");
+  private async fetchFull(ids: string[]): Promise<ProviderMessage[]> {
+    const labels = await this.labelMap();
+    const messages = await mapLimit(ids, 5, async (id) => {
+      try {
+        const res = await this.gmail.users.messages.get({ userId: "me", id, format: "full" });
+        return this.toProviderMessage(res.data, labels);
+      } catch (err) {
+        // Deleted between listing and fetching: nothing to import.
+        if (httpStatus(err) === 404) return null;
+        log.warn("Gmail messages.get failed", { error: errorMessage(err) });
+        throw new EmailProviderError(`Gmail messages.get failed: ${errorMessage(err)}`);
+      }
+    });
+    return messages.filter((m): m is ProviderMessage => m !== null);
+  }
+
+  async listMessages(options: { since: Date; maxResults: number; pageToken?: string }): Promise<ListMessagesResult> {
+    const query = [`after:${Math.floor(options.since.getTime() / 1000)}`, "-in:chats", "-in:spam", "-in:trash"].join(" ");
     const list = await this.call("messages.list", () =>
       this.gmail.users.messages.list({
         userId: "me",
@@ -136,12 +171,81 @@ export class GmailProvider implements EmailProvider {
       }),
     );
     const ids = (list.data.messages ?? []).map((m) => m.id).filter((id): id is string => Boolean(id));
+    return { messages: await this.fetchFull(ids), nextPageToken: list.data.nextPageToken ?? undefined };
+  }
+
+  async getSyncCursor(): Promise<string> {
+    const profile = await this.call("getProfile", () => this.gmail.users.getProfile({ userId: "me" }));
+    if (!profile.data.historyId) throw new EmailProviderError("Gmail did not return a history id");
+    return profile.data.historyId;
+  }
+
+  /**
+   * Incremental sync with the Gmail History API: asks "what changed since historyId X?"
+   * instead of re-listing the mailbox. A poll with no new mail costs one small request.
+   */
+  async listChanges(cursor: string, options: { maxMessages: number }): Promise<ChangesResult> {
+    const added = new Set<string>();
+    const changed = new Set<string>();
+    const removed = new Set<string>();
+    let latest = cursor;
+    let pageToken: string | undefined;
+    do {
+      let res: { data: gmail_v1.Schema$ListHistoryResponse };
+      try {
+        res = await this.gmail.users.history.list({
+          userId: "me",
+          startHistoryId: cursor,
+          historyTypes: ["messageAdded", "messageDeleted", "labelAdded", "labelRemoved"],
+          maxResults: 500,
+          pageToken,
+        });
+      } catch (err) {
+        // Gmail keeps roughly a week of history; older cursors return 404.
+        if (httpStatus(err) === 404) return { status: "expired" };
+        log.warn("Gmail history.list failed", { error: errorMessage(err) });
+        throw new EmailProviderError(`Gmail history.list failed: ${errorMessage(err)}`);
+      }
+      for (const h of res.data.history ?? []) {
+        for (const { message } of h.messagesAdded ?? []) {
+          if (message?.id && !(message.labelIds ?? []).some((l) => SKIP_LABELS.includes(l))) added.add(message.id);
+        }
+        for (const { message } of [...(h.labelsAdded ?? []), ...(h.labelsRemoved ?? [])]) {
+          if (message?.id) changed.add(message.id);
+        }
+        for (const { message } of h.messagesDeleted ?? []) {
+          if (message?.id) removed.add(message.id);
+        }
+      }
+      if (res.data.historyId) latest = res.data.historyId;
+      pageToken = res.data.nextPageToken ?? undefined;
+      if (added.size > Math.max(options.maxMessages, MAX_HISTORY_MESSAGES)) return { status: "expired" };
+    } while (pageToken);
+
+    for (const id of removed) {
+      added.delete(id);
+      changed.delete(id);
+    }
+    for (const id of added) changed.delete(id);
+
+    const messages = await this.fetchFull([...added].slice(0, options.maxMessages));
     const labels = await this.labelMap();
-    const messages = await mapLimit(ids, 5, async (id) => {
-      const res = await this.call("messages.get", () => this.gmail.users.messages.get({ userId: "me", id, format: "full" }));
-      return this.toProviderMessage(res.data, labels);
-    });
-    return { messages, nextPageToken: list.data.nextPageToken ?? undefined };
+    const updates = (
+      await mapLimit([...changed], 5, async (id) => {
+        try {
+          const res = await this.gmail.users.messages.get({ userId: "me", id, format: "minimal" });
+          return this.stateOf(res.data, labels);
+        } catch (err) {
+          if (httpStatus(err) === 404) {
+            removed.add(id);
+            return null;
+          }
+          throw new EmailProviderError(`Gmail messages.get failed: ${errorMessage(err)}`);
+        }
+      })
+    ).filter((u): u is MailboxStateUpdate => u !== null);
+
+    return { status: "ok", messages, updates, removedIds: [...removed], cursor: latest };
   }
 
   async sendMessage(message: OutgoingMessage): Promise<SentMessage> {
@@ -150,15 +254,16 @@ export class GmailProvider implements EmailProvider {
       this.gmail.users.messages.send({ userId: "me", requestBody: { raw, threadId: message.providerThreadId } }),
     );
     const id = res.data.id ?? "";
-    // Fetch the Message-ID header Gmail assigned, so later replies thread correctly.
-    const sent = await this.call("messages.get", () =>
-      this.gmail.users.messages.get({ userId: "me", id, format: "metadata", metadataHeaders: ["Message-ID"] }),
-    );
-    return {
-      providerMessageId: id,
-      providerThreadId: res.data.threadId ?? id,
-      messageIdHeader: header(sent.data.payload?.headers, "Message-ID"),
-    };
+    // Best-effort: the Message-ID header helps later replies thread correctly, but the email
+    // is already sent — a failure here must not be reported as a failed send.
+    let messageIdHeader: string | undefined;
+    try {
+      const sent = await this.gmail.users.messages.get({ userId: "me", id, format: "metadata", metadataHeaders: ["Message-ID"] });
+      messageIdHeader = header(sent.data.payload?.headers, "Message-ID");
+    } catch (err) {
+      log.warn("Could not read the sent message's Message-ID", { error: errorMessage(err) });
+    }
+    return { providerMessageId: id, providerThreadId: res.data.threadId ?? id, messageIdHeader };
   }
 
   private modify(id: string, add: string[], remove: string[]) {

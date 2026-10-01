@@ -39,18 +39,13 @@ export function SidebarNav({ counts, onNavigate }: { counts: SidebarCounts; onNa
   );
 }
 
-export function AppSidebar({ counts, mockMode }: { counts: SidebarCounts; mockMode: boolean }) {
+export function AppSidebar({ counts }: { counts: SidebarCounts }) {
   return (
     <aside className="sticky top-0 hidden h-screen w-60 shrink-0 flex-col gap-6 overflow-y-auto border-r bg-sidebar p-4 md:flex">
       <Link href="/dashboard" className="px-1.5">
         <Logo />
       </Link>
       <SidebarNav counts={counts} />
-      {mockMode && (
-        <p className="mt-auto rounded-lg bg-muted px-3 py-2 text-xs text-muted-foreground">
-          <span className="font-medium text-foreground">Mock Email Mode.</span> You&apos;re using a demo inbox; sending is simulated.
-        </p>
-      )}
     </aside>
   );
 }

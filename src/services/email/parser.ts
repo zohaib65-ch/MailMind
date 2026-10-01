@@ -29,7 +29,7 @@ export type ParsedEmail = {
   isArchived: boolean;
 };
 
-export function parseProviderMessage(message: ProviderMessage, accountEmail: string): ParsedEmail {
+export function parseProviderMessage(message: ProviderMessage): ParsedEmail {
   const bodyText = message.textBody?.trim()
     ? normalizeWhitespace(message.textBody)
     : message.htmlBody
@@ -37,8 +37,9 @@ export function parseProviderMessage(message: ProviderMessage, accountEmail: str
       : "";
 
   const fromEmail = message.from.email.toLowerCase();
-  const direction =
-    fromEmail === accountEmail.toLowerCase() || message.labels.includes("SENT") ? "outbound" : "inbound";
+  // Decide direction from the provider's SENT label, never from the From header: anyone can
+  // forge "From: you", and a forged email must not be treated as something the user wrote.
+  const direction = message.labels.includes("SENT") ? "outbound" : "inbound";
 
   return {
     providerMessageId: message.providerMessageId,

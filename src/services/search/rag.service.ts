@@ -11,7 +11,7 @@ import { searchEmails } from "./search.service";
 
 /**
  * RAG over the inbox: Retrieve (hybrid search) → Augment (number the emails as sources) →
- * Generate (Claude answers using only those sources, citing them as [n]).
+ * Generate (Gemini answers using only those sources, citing them as [n]).
  *
  * Unlike the agent, this is a fixed chain: one retrieval, one LLM call. Predictable,
  * cheap, and a good baseline to compare the agent against.
