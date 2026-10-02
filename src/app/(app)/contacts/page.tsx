@@ -15,7 +15,7 @@ export default async function ContactsPage() {
     <div className="mx-auto max-w-4xl space-y-5">
       <PageHeader
         title="Contacts"
-        description="Everyone you email with. Set relationships so the assistant understands “my manager” or “clients”."
+        description="Everyone you email with. Set relationships to keep track of who is who."
       />
       {contacts.length ? <ContactsTable contacts={contacts} /> : <EmptyState icon={Users} title="No contacts yet" description="Contacts appear as emails sync." />}
     </div>

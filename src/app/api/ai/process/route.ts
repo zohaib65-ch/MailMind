@@ -4,14 +4,10 @@ import { AiNotConfiguredError } from "@/lib/utils/errors";
 import { apiRoute } from "@/lib/utils/http";
 import { RATE_LIMITS } from "@/lib/utils/rate-limit";
 import { processPendingEmails } from "@/services/ai/processing.service";
-import { indexPendingEmails } from "@/services/embeddings/indexer";
 
 /** Queues AI processing for every pending email; returns immediately (202). */
 export const POST = apiRoute({ rateLimit: RATE_LIMITS.ai }, async (_req, { user }) => {
   if (!isAiConfigured()) throw new AiNotConfiguredError();
-  after(async () => {
-    await processPendingEmails(user.id, { limit: 100 });
-    await indexPendingEmails(user.id);
-  });
+  after(() => processPendingEmails(user.id, { limit: 100 }));
   return NextResponse.json({ queued: true }, { status: 202 });
 });

@@ -1,8 +1,6 @@
 import { BrainCircuit, FilePenLine, Mail, MailOpen, Reply, Star } from "lucide-react";
 import type { Metadata } from "next";
 import Link from "next/link";
-import { ActivityFeed } from "@/components/ai/activity-feed";
-import { QuickPrompts } from "@/components/ai/quick-prompts";
 import { AiNotConfiguredNotice } from "@/components/common/ai-not-configured";
 import { StatCard } from "@/components/common/stat-card";
 import { CategoryBreakdown } from "@/components/dashboard/category-breakdown";
@@ -12,7 +10,6 @@ import { PageHeader } from "@/components/layout/page-header";
 import { Button } from "@/components/ui/button";
 import { Card, CardAction, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { isAiConfigured } from "@/lib/utils/env";
-import { listActivity } from "@/services/ai/activity.service";
 import { requireUser } from "@/services/auth/dal";
 import { getDashboardStats, getPriorityEmails } from "@/services/dashboard/dashboard.service";
 
@@ -20,11 +17,7 @@ export const metadata: Metadata = { title: "Dashboard" };
 
 export default async function DashboardPage() {
   const user = await requireUser();
-  const [stats, priority, activity] = await Promise.all([
-    getDashboardStats(user.id),
-    getPriorityEmails(user.id),
-    listActivity(user.id, { limit: 8 }),
-  ]);
+  const [stats, priority] = await Promise.all([getDashboardStats(user.id), getPriorityEmails(user.id)]);
   const aiConfigured = isAiConfigured();
 
   return (
@@ -50,7 +43,6 @@ export default async function DashboardPage() {
           icon={BrainCircuit}
           tone="ai"
           hint={stats.aiFailed ? `${stats.aiFailed} failed` : undefined}
-          href="/activity"
         />
       </section>
 
@@ -74,15 +66,6 @@ export default async function DashboardPage() {
               />
             </CardContent>
           </Card>
-          <Card>
-            <CardHeader>
-              <CardTitle>Ask the assistant</CardTitle>
-              <CardDescription>It searches, reads and drafts using controlled tools — and asks before sending.</CardDescription>
-            </CardHeader>
-            <CardContent>
-              <QuickPrompts />
-            </CardContent>
-          </Card>
         </div>
 
         <div className="space-y-6">
@@ -104,19 +87,6 @@ export default async function DashboardPage() {
           )}
           <UrgencySummary data={stats.byUrgency} />
           <CategoryBreakdown data={stats.byCategory} />
-          <Card>
-            <CardHeader>
-              <CardTitle>Recent AI activity</CardTitle>
-              <CardAction>
-                <Button asChild variant="ghost" size="sm">
-                  <Link href="/activity">All activity</Link>
-                </Button>
-              </CardAction>
-            </CardHeader>
-            <CardContent>
-              <ActivityFeed items={activity} />
-            </CardContent>
-          </Card>
         </div>
       </div>
     </div>

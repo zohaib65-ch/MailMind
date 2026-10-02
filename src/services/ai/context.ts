@@ -55,7 +55,6 @@ export function buildReplyContext(ctx: EmailContext, instructions?: string): Rep
       email: ctx.stepUser.email,
       tone: ctx.user.settings?.replyTone ?? "professional and friendly",
       signature: ctx.user.settings?.signature,
-      notes: (ctx.user.memories ?? []).map((m) => m.text).slice(-20),
     },
     email: toPromptEmail(ctx.email),
     earlier,

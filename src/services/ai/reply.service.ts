@@ -9,14 +9,13 @@ import { draftReply } from "./steps/reply-drafter";
 
 /**
  * Generates an AI reply for an email and saves it as a draft awaiting review.
- * Shared by the pipeline, the "Generate AI Reply" button and the agent's createDraft tool.
+ * Shared by the pipeline and the "Generate AI Reply" button.
  */
 export async function generateReplyDraft(options: {
   userId: string;
   emailId: string;
   source: Exclude<DraftSource, "user">;
   instructions?: string;
-  conversationId?: string;
   pipelineRunId?: string;
   context?: EmailContext;
 }): Promise<DraftDTO> {
@@ -28,7 +27,6 @@ export async function generateReplyDraft(options: {
       userId: options.userId,
       type: "draft_reply",
       emailId: options.emailId,
-      conversationId: options.conversationId,
       pipelineRunId: options.pipelineRunId,
       input: { instructions: options.instructions ?? null, source: options.source },
     },
@@ -51,6 +49,5 @@ export async function generateReplyDraft(options: {
     notes: reply.data.notes,
     source: options.source,
     model: reply.model,
-    conversationId: options.conversationId,
   });
 }

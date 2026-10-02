@@ -8,7 +8,7 @@ export function AiNotConfiguredNotice() {
       <AlertTitle>AI features are switched off</AlertTitle>
       <AlertDescription>
         Add <code className="rounded bg-muted px-1">GEMINI_API_KEY</code> to your <code className="rounded bg-muted px-1">.env</code> and
-        restart to enable classification, summaries, reply drafts and the assistant. Keyword search still works.
+        restart to enable classification, summaries and reply drafts. Keyword search still works.
       </AlertDescription>
     </Alert>
   );

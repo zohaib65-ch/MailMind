@@ -1,6 +1,6 @@
 import "server-only";
 import { connectDb, isObjectId, toObjectId } from "@/lib/db/mongoose";
-import { AiDraft, AiTask, Email, EmailAccount, EmailEmbedding, EmailThread, User, type IEmailAccount, type IUser } from "@/lib/db/models";
+import { AiDraft, AiTask, Email, EmailAccount, EmailThread, User, type IEmailAccount, type IUser } from "@/lib/db/models";
 import { encrypt } from "@/lib/utils/crypto";
 import { NotFoundError } from "@/lib/utils/errors";
 import type { GoogleIdentity } from "@/services/auth/google-oauth";
@@ -58,7 +58,6 @@ export async function disconnectAccount(userId: string, accountId: string): Prom
   if (!account) throw new NotFoundError("Email account");
   const emailIds = (await Email.find({ accountId: account._id }).select("_id").lean()).map((e) => e._id);
   await Promise.all([
-    EmailEmbedding.deleteMany({ emailId: { $in: emailIds } }),
     AiDraft.deleteMany({ accountId: account._id }),
     EmailThread.deleteMany({ accountId: account._id }),
     AiTask.deleteMany({ emailId: { $in: emailIds } }),

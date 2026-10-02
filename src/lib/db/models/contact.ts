@@ -3,8 +3,8 @@ import { CONTACT_RELATIONSHIPS, type ContactRelationship } from "@/schemas/commo
 import { defineModel, type ObjectId } from "./shared";
 
 /**
- * People the user exchanges email with. `relationship` lets the assistant resolve
- * requests like "emails from my manager" or "clients that need a reply".
+ * People the user exchanges email with. `relationship` is a label the user sets
+ * (manager, client, …) to organise their contacts.
  */
 export interface IContact {
   _id: ObjectId;

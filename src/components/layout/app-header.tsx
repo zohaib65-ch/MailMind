@@ -46,8 +46,8 @@ export function AppHeader({
       </Sheet>
       <SearchInput
         className="w-full max-w-md"
-        placeholder="Search emails by meaning…"
-        onSearch={(q) => q && router.push(`/search?q=${encodeURIComponent(q)}`)}
+        placeholder="Search emails…"
+        onSearch={(q) => q && router.push(`/inbox?view=all&q=${encodeURIComponent(q)}`)}
       />
       <div className="ml-auto flex items-center gap-2">
         <div className="hidden sm:block">

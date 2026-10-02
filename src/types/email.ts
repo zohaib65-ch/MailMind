@@ -128,43 +128,10 @@ export type DashboardStatsDTO = {
   byUrgency: { urgency: Urgency; count: number }[];
 };
 
-export type SearchMode = "keyword" | "semantic" | "hybrid";
-
-export type SearchResultDTO = {
-  email: EmailListItemDTO;
-  score: number;
-  matchedBy: ("keyword" | "semantic")[];
-  /** Best-matching chunk for semantic hits. */
-  excerpt?: string;
-};
-
-export type RagAnswerDTO = {
-  answer: string;
-  confidence: "high" | "medium" | "low";
-  sources: { index: number; emailId: string; subject: string; from: EmailAddress; receivedAt: string }[];
-};
-
 export type UserSettingsDTO = {
   replyTone: string;
   signature?: string;
   summaryLength: SummaryLength;
   autoDraftReplies: boolean;
   autoMarkImportant: boolean;
-};
-
-export type ActivityItemDTO = {
-  id: string;
-  kind: "ai_task" | "tool";
-  name: string;
-  status: string;
-  summary?: string;
-  error?: string;
-  emailId?: string;
-  conversationId?: string;
-  model?: string;
-  inputTokens?: number;
-  outputTokens?: number;
-  latencyMs?: number;
-  startedAt: string;
-  source?: "agent" | "pipeline";
 };

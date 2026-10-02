@@ -3,7 +3,6 @@ import { RATE_LIMITS } from "@/lib/utils/rate-limit";
 import { ProcessEmailSchema } from "@/schemas/api";
 import type { PipelineStepEvent } from "@/services/ai/pipeline";
 import { processEmail } from "@/services/ai/processing.service";
-import { indexPendingEmails } from "@/services/embeddings/indexer";
 
 export const maxDuration = 120;
 
@@ -38,7 +37,6 @@ export const POST = apiRoute<{ id: string }>({ rateLimit: RATE_LIMITS.ai }, asyn
     }
     await run;
     if (failure) throw failure;
-    await indexPendingEmails(user.id).catch(() => undefined);
     yield { type: "done" };
   }
   return sseResponse(events());

@@ -3,7 +3,7 @@ import { RateLimitError } from "./errors";
 import { getRedis } from "./redis";
 
 export type RateLimitRule = {
-  /** Bucket name, e.g. "assistant" */
+  /** Bucket name, e.g. "ai" */
   name: string;
   /** Max requests per window */
   limit: number;
@@ -16,7 +16,6 @@ export const RATE_LIMITS = {
   read: { name: "read", limit: 300, windowSeconds: 60 },
   write: { name: "write", limit: 60, windowSeconds: 60 },
   ai: { name: "ai", limit: 30, windowSeconds: 60 },
-  assistant: { name: "assistant", limit: 15, windowSeconds: 60 },
   sync: { name: "sync", limit: 6, windowSeconds: 60 },
 } satisfies Record<string, RateLimitRule>;
 

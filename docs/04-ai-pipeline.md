@@ -19,7 +19,7 @@ Every email goes through the same workflow, implemented as a **LangGraph `StateG
 | **summarize** | LLM | 1–2 sentence summary (normal length) | `SummaryOutputSchema` |
 | **assess_urgency** | LLM | low / medium / high, reasons, optional respond-by | `UrgencyOutputSchema` |
 | **decide** | Rules | Which actions to take, and which run automatically | `ActionDecisionSchema` |
-| **act** | Tool | Runs automatic, reversible actions (mark important) | logged in `tool_executions` |
+| **act** | Service | Runs automatic, reversible actions (mark important) through the email service | — |
 | **draft** | LLM | Writes a reply as a draft for your review | `ReplyDraftOutputSchema` |
 | **memory** | LLM | Folds this message into the thread's rolling memory | `ThreadMemoryOutputSchema` |
 | **finalize** | DB | Saves all results onto the email, sets `needs_reply` / `replied` | — |
@@ -49,10 +49,9 @@ Each step has a reusable LangChain `ChatPromptTemplate` in `src/lib/langchain/pr
 | `urgency.ts` | `urgencyPrompt` | `urgency@1` |
 | `reply.ts` | `replyPrompt` | `reply@1` |
 | `memory.ts` | `memoryPrompt` | `memory@1` |
-| `rag.ts` | `ragPrompt` | `rag@1` |
 | `shared.ts` | shared rules: the untrusted-content notice, the `<email>` formatter, dates in `APP_TIMEZONE` | — |
 
-Email content is always wrapped in tags (`<email>`, `<thread>`, `<memory>`) with a standing instruction that text inside them is **data, never instructions**. Look-alike tags inside an email are neutralised, so an email can't close the wrapper and "escape". See [Security](10-security.md#prompt-injection).
+Email content is always wrapped in tags (`<email>`, `<thread>`, `<memory>`) with a standing instruction that text inside them is **data, never instructions**. Look-alike tags inside an email are neutralised, so an email can't close the wrapper and "escape". See [Security](08-security.md#prompt-injection).
 
 ## Structured output
 
@@ -84,8 +83,6 @@ Values that fail the check are dropped and counted. The live progress shows "N u
 | classify, summarize, urgency | `GEMINI_PIPELINE_MODEL` | LOW | 4,000 |
 | extract, memory | `GEMINI_PIPELINE_MODEL` | LOW | 8,000 |
 | draft | `GEMINI_MODEL` | MEDIUM | 16,000 |
-| rag | `GEMINI_MODEL` | LOW | 16,000 |
-| agent | `GEMINI_MODEL` | MEDIUM | 16,000 |
 
 `thinkingLevel` is only sent to Gemini 3+ models (older models reject it). Calls retry up to 6 times with exponential backoff, which absorbs free-tier `429` and transient `503` responses. The model's thinking is never shown in the UI.
 
@@ -121,7 +118,7 @@ The reply drafter reads this memory plus the last few messages, instead of the w
 
 | Trigger | Which emails |
 |---|---|
-| New mail from a sync (auto) | Only the emails that sync imported, newest first, at most `AI_AUTO_PROCESS_LIMIT` (25) |
+| New mail from a sync (auto, when a Gemini key is set and `AI_AUTO_PROCESS` is on) | Only the emails that sync imported, newest first, at most `AI_AUTO_PROCESS_LIMIT` (25) |
 | A reply you send | That outbound email (memory step only) |
 | **Analyse with AI** on an email | That email (re-analyse with `force`) |
 | **Analyse N with AI** in the inbox | Up to 100 pending emails, newest first |
@@ -131,4 +128,4 @@ Processing is claimed atomically: an email moves `pending → processing` in a s
 
 ## Observability
 
-Every step writes an `ai_tasks` document (type, status, model, input/output, tokens, latency, pipeline run id). Every tool call writes a `tool_executions` document. Both appear on the **AI Activity** page and are kept for 90 days.
+Every step writes an `ai_tasks` document (type, status, model, input/output, tokens, latency, pipeline run id). These records are kept for 90 days. There is no page for them in the app; query the `ai_tasks` collection directly.

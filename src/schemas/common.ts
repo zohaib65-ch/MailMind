@@ -49,6 +49,7 @@ export type ReplyStatus = (typeof REPLY_STATUSES)[number];
 export const DRAFT_STATUSES = ["pending_review", "approved", "sending", "sent", "discarded", "failed"] as const;
 export type DraftStatus = (typeof DRAFT_STATUSES)[number];
 
+// "agent" drafts came from the removed AI assistant; kept so existing ones stay valid.
 export const DRAFT_SOURCES = ["pipeline", "agent", "user"] as const;
 export type DraftSource = (typeof DRAFT_SOURCES)[number];
 

@@ -1,6 +1,6 @@
 import "server-only";
 import { connectDb, toObjectId } from "@/lib/db/mongoose";
-import { AiDraft, Email, EmailAccount, EmailEmbedding, EmailThread, type IEmailAccount } from "@/lib/db/models";
+import { AiDraft, Email, EmailAccount, EmailThread, type IEmailAccount } from "@/lib/db/models";
 import { acquireLock } from "@/lib/utils/cache";
 import { getEnv } from "@/lib/utils/env";
 import { ConflictError, errorMessage, ValidationError } from "@/lib/utils/errors";
@@ -146,10 +146,7 @@ async function removeMessages(accountId: IEmailAccount["_id"], providerMessageId
   const emails = await Email.find({ accountId, providerMessageId: { $in: providerMessageIds } }).select("_id threadId").lean();
   if (!emails.length) return 0;
   const ids = emails.map((e) => e._id);
-  await Promise.all([
-    EmailEmbedding.deleteMany({ emailId: { $in: ids } }),
-    AiDraft.updateMany({ emailId: { $in: ids }, status: { $in: ["pending_review", "failed"] } }, { $set: { status: "discarded" } }),
-  ]);
+  await AiDraft.updateMany({ emailId: { $in: ids }, status: { $in: ["pending_review", "failed"] } }, { $set: { status: "discarded" } });
   await Email.deleteMany({ _id: { $in: ids } });
   for (const threadId of new Set(emails.map((e) => e.threadId.toString()))) {
     const count = await Email.countDocuments({ threadId });

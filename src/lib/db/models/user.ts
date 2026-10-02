@@ -10,19 +10,11 @@ export interface UserSettings {
   autoMarkImportant: boolean;
 }
 
-/** Long-term memory: facts the assistant was asked to remember across conversations. */
-export interface UserMemory {
-  _id: ObjectId;
-  text: string;
-  createdAt: Date;
-}
-
 export interface IUser {
   _id: ObjectId;
   email: string;
   name?: string;
   settings: UserSettings;
-  memories: UserMemory[];
   createdAt: Date;
   updatedAt: Date;
 }
@@ -38,12 +30,6 @@ const userSchema = new Schema<IUser>(
       autoDraftReplies: { type: Boolean, default: true },
       autoMarkImportant: { type: Boolean, default: true },
     },
-    memories: [
-      {
-        text: { type: String, required: true, maxlength: 500 },
-        createdAt: { type: Date, default: Date.now },
-      },
-    ],
   },
   { timestamps: true },
 );

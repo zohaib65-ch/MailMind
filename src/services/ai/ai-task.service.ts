@@ -8,7 +8,6 @@ export type AiTaskMeta = {
   userId: string;
   type: AiTaskType;
   emailId?: string;
-  conversationId?: string;
   pipelineRunId?: string;
   input?: unknown;
 };
@@ -23,7 +22,7 @@ export type TrackedOutcome<T> = {
 
 /**
  * Wraps one AI step so it is recorded in the `ai_tasks` collection with its status,
- * output, token usage and latency. This is what the Activity page shows.
+ * output, token usage and latency.
  */
 export async function trackAiTask<T>(meta: AiTaskMeta, run: () => Promise<TrackedOutcome<T>>): Promise<T> {
   const started = Date.now();
@@ -31,7 +30,6 @@ export async function trackAiTask<T>(meta: AiTaskMeta, run: () => Promise<Tracke
     userId: toObjectId(meta.userId),
     type: meta.type,
     emailId: meta.emailId ? toObjectId(meta.emailId) : undefined,
-    conversationId: meta.conversationId ? toObjectId(meta.conversationId) : undefined,
     pipelineRunId: meta.pipelineRunId,
     input: meta.input,
     status: "running",
@@ -60,26 +58,6 @@ export async function trackAiTask<T>(meta: AiTaskMeta, run: () => Promise<Tracke
     );
     throw err;
   }
-}
-
-/** For long-running or streaming work that can't be wrapped in a single promise. */
-export async function startAiTask(meta: AiTaskMeta) {
-  const started = Date.now();
-  const task = await AiTask.create({
-    userId: toObjectId(meta.userId),
-    type: meta.type,
-    emailId: meta.emailId ? toObjectId(meta.emailId) : undefined,
-    conversationId: meta.conversationId ? toObjectId(meta.conversationId) : undefined,
-    pipelineRunId: meta.pipelineRunId,
-    input: meta.input,
-    status: "running",
-  });
-  const finish = (set: Record<string, unknown>) =>
-    AiTask.updateOne({ _id: task._id }, { $set: { ...set, latencyMs: Date.now() - started, finishedAt: new Date() } });
-  return {
-    succeed: (output?: unknown) => finish({ status: "succeeded", output }),
-    fail: (err: unknown) => finish({ status: "failed", error: errorMessage(err) }),
-  };
 }
 
 export async function recordSkippedTask(meta: AiTaskMeta, reason: string): Promise<void> {

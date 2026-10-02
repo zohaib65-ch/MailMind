@@ -5,7 +5,7 @@ import { addressSchema, defineModel, type Address, type ObjectId } from "./share
 /**
  * A reply prepared by the AI (or the user). Nothing is sent until the user approves it:
  *
- *   pending_review ──(user clicks Send / approves in chat)──▶ approved ──▶ sending ──▶ sent
+ *   pending_review ──(user clicks Send)──▶ approved ──▶ sending ──▶ sent
  *          └──▶ discarded                                                    └──▶ failed
  */
 export interface IAiDraft {
@@ -24,7 +24,6 @@ export interface IAiDraft {
   source: DraftSource;
   notes: string[];
   model?: string;
-  conversationId?: ObjectId;
   approvedAt?: Date;
   sentAt?: Date;
   sentProviderMessageId?: string;
@@ -48,7 +47,6 @@ const draftSchema = new Schema<IAiDraft>(
     source: { type: String, enum: DRAFT_SOURCES, required: true },
     notes: { type: [String], default: [] },
     model: String,
-    conversationId: { type: Schema.Types.ObjectId, ref: "AiConversation" },
     approvedAt: Date,
     sentAt: Date,
     sentProviderMessageId: String,

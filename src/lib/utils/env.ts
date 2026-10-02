@@ -42,7 +42,7 @@ const envSchema = z.object({
   /** Gemini API key from Google AI Studio. GOOGLE_API_KEY is accepted as an alias. */
   GEMINI_API_KEY: z.string().optional(),
   GOOGLE_API_KEY: z.string().optional(),
-  /** Model for the agent, reply drafts and RAG answers. */
+  /** Model for reply drafts. */
   GEMINI_MODEL: z.string().default("gemini-3.5-flash"),
   /** Model for the per-email pipeline steps (classify, extract, summarise, urgency, memory). */
   GEMINI_PIPELINE_MODEL: z.string().default("gemini-3.5-flash-lite"),
@@ -53,11 +53,6 @@ const envSchema = z.object({
    * Gmail import from burning through the Gemini quota; the rest can be analysed on demand.
    */
   AI_AUTO_PROCESS_LIMIT: z.coerce.number().int().min(0).default(25),
-
-  // ── Embeddings (semantic search) ──
-  GEMINI_EMBEDDING_MODEL: z.string().default("gemini-embedding-2"),
-  EMBEDDING_DIMENSIONS: z.coerce.number().int().positive().default(768),
-  ATLAS_VECTOR_INDEX: z.string().default("email_embeddings_vector"),
 
   // ── Redis (optional) ──
   REDIS_URL: z.string().optional(),

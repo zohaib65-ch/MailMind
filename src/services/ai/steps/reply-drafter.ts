@@ -6,7 +6,7 @@ import { bodyForAi, replySubject } from "@/lib/utils/email-text";
 import { ReplyDraftOutputSchema } from "@/schemas/ai";
 
 export type ReplyContext = {
-  user: { name: string; email: string; tone: string; signature?: string; notes: string[] };
+  user: { name: string; email: string; tone: string; signature?: string };
   email: PromptEmail;
   /** Earlier messages in the thread, oldest first (the email being replied to excluded). */
   earlier: (PromptEmail & { direction: "inbound" | "outbound" })[];
@@ -59,7 +59,6 @@ export async function draftReply(context: ReplyContext) {
       signature,
       today: today(),
       memory: formatMemory(context.memory),
-      userNotes: context.user.notes.length ? context.user.notes.map((n) => `- ${n}`).join("\n") : "(none)",
       thread,
       email: formatEmailForPrompt(context.email),
       instructions: context.instructions?.trim() || "(none)",

@@ -56,7 +56,6 @@ export async function createDraft(input: {
   source: DraftSource;
   notes?: string[];
   model?: string;
-  conversationId?: string;
 }): Promise<DraftDTO> {
   await connectDb();
   const replyTo = input.emailId ? await getOwnedEmail(input.userId, input.emailId) : null;
@@ -96,7 +95,6 @@ export async function createDraft(input: {
     source: input.source,
     notes: input.notes ?? [],
     model: input.model,
-    conversationId: input.conversationId ? toObjectId(input.conversationId) : undefined,
   });
 
   if (replyTo && replyTo.replyStatus !== "replied") {
@@ -175,8 +173,8 @@ export async function discardDraft(userId: string, draftId: string): Promise<voi
  */
 export async function approveDraft(userId: string, draftId: string, edits: DraftEdits = {}): Promise<IAiDraft> {
   await getOwnedDraft(userId, draftId);
-  // "approved" is accepted too, so a draft whose send never started (e.g. the assistant run
-  // was interrupted) can be approved again instead of getting stuck.
+  // "approved" is accepted too, so a draft whose send never started (e.g. the request was
+  // interrupted) can be approved again instead of getting stuck.
   const approved = await AiDraft.findOneAndUpdate(
     { _id: toObjectId(draftId), userId: toObjectId(userId), status: { $in: ["pending_review", "failed", "approved"] } },
     { $set: { ...editsToSet(edits), status: "approved", approvedAt: new Date(), error: null } },

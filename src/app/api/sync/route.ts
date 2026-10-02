@@ -15,7 +15,7 @@ const SyncRequestSchema = z.object({
 /**
  * Checks Gmail for changes. Open tabs call this every GMAIL_POLL_SECONDS (see
  * components/layout/mail-sync.tsx); the Sync button calls it on demand. After new mail
- * arrives, embeddings and the AI pipeline run in the background via `after()`.
+ * arrives, the AI pipeline runs in the background via `after()`.
  */
 export const POST = apiRoute({ rateLimit: RATE_LIMITS.sync }, async (req, { user }) => {
   const { background } = await parseBody(req, SyncRequestSchema);

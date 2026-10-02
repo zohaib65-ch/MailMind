@@ -10,9 +10,6 @@ export const AI_TASK_TYPES = [
   "action_decision",
   "draft_reply",
   "memory_update",
-  "embed",
-  "agent_run",
-  "rag_answer",
 ] as const;
 export type AiTaskType = (typeof AI_TASK_TYPES)[number];
 
@@ -24,7 +21,6 @@ export interface IAiTask {
   _id: ObjectId;
   userId: ObjectId;
   emailId?: ObjectId;
-  conversationId?: ObjectId;
   pipelineRunId?: string;
   type: AiTaskType;
   status: AiTaskStatus;
@@ -42,7 +38,6 @@ export interface IAiTask {
 const aiTaskSchema = new Schema<IAiTask>({
   userId: { type: Schema.Types.ObjectId, ref: "User", required: true },
   emailId: { type: Schema.Types.ObjectId, ref: "Email" },
-  conversationId: { type: Schema.Types.ObjectId, ref: "AiConversation" },
   pipelineRunId: String,
   type: { type: String, enum: AI_TASK_TYPES, required: true },
   status: { type: String, enum: AI_TASK_STATUSES, default: "running" },

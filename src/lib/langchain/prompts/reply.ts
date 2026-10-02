@@ -1,7 +1,7 @@
 import { ChatPromptTemplate } from "@langchain/core/prompts";
 import { UNTRUSTED_CONTENT_NOTICE } from "./shared";
 
-export const REPLY_PROMPT_VERSION = "reply@1";
+export const REPLY_PROMPT_VERSION = "reply@2";
 
 export const replyPrompt = ChatPromptTemplate.fromMessages([
   [
@@ -25,11 +25,6 @@ What MailMind remembers about this conversation:
 <memory>
 {memory}
 </memory>
-
-Things the user asked MailMind to remember:
-<user_notes>
-{userNotes}
-</user_notes>
 
 Earlier messages in this thread, oldest first:
 <thread>

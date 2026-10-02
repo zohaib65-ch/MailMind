@@ -58,26 +58,6 @@ export const CreateDraftSchema = z.object({
 /** Sending requires an explicit `confirm: true` — the user's approval, in the request. */
 export const SendDraftSchema = z.object({ ...draftFields, confirm: z.literal(true) });
 
-export const SearchQuerySchema = z.object({
-  q: z.string().min(1).max(300),
-  mode: z.enum(["keyword", "semantic", "hybrid"]).optional(),
-  limit: z.coerce.number().int().min(1).max(50).optional(),
-});
-
-export const AskSchema = z.object({ question: z.string().min(3).max(500) });
-
-export const ChatRequestSchema = z.object({
-  message: z.string().trim().min(1).max(4_000),
-  conversationId: z.string().optional(),
-});
-
-export const ResumeRequestSchema = z.object({
-  conversationId: z.string(),
-  decision: z.enum(["approve", "reject"]),
-  edits: DraftEditSchema.optional(),
-  reason: z.string().max(500).optional(),
-});
-
 export const SettingsPatchSchema = z.object({
   replyTone: z.string().min(2).max(200).optional(),
   signature: z.string().max(500).optional(),
@@ -95,10 +75,4 @@ export const ContactPatchSchema = z.object({
   relationship: ContactRelationshipSchema.optional(),
   company: z.string().max(100).optional(),
   name: z.string().max(100).optional(),
-});
-
-export const ActivityQuerySchema = z.object({
-  limit: z.coerce.number().int().min(1).max(200).optional(),
-  emailId: z.string().optional(),
-  conversationId: z.string().optional(),
 });

@@ -20,11 +20,11 @@ npm install
 cp .env.example .env
 ```
 
-Fill it in using the sections below. Every variable is described in [Configuration](11-configuration.md). `.env` is gitignored: never commit it.
+Fill it in using the sections below. Every variable is described in [Configuration](09-configuration.md). `.env` is gitignored: never commit it.
 
 ## 3. MongoDB Atlas
 
-1. Create a free cluster at [cloud.mongodb.com](https://cloud.mongodb.com). The M0 tier is enough, and it includes Atlas Vector Search.
+1. Create a free cluster at [cloud.mongodb.com](https://cloud.mongodb.com). The M0 tier is enough.
 2. **Database Access** → add a database user with a password.
 3. **Network Access** → add your IP address (or `0.0.0.0/0` while developing).
 4. **Connect → Drivers** → copy the connection string into `.env`:
@@ -36,13 +36,13 @@ Fill it in using the sections below. Every variable is described in [Configurati
 
    `MONGODB_DB` picks the database name. It overrides any name in the URI path.
 
-5. Create the indexes, including the Atlas Vector Search index:
+5. Create the indexes:
 
    ```bash
    npm run db:indexes
    ```
 
-   You should see `✓ Atlas vector index created (768 dims for gemini-embedding-2)`. The vector index takes about a minute to become queryable. Until then, semantic search uses an exact (slower) cosine-similarity fallback, so nothing breaks.
+   This syncs the indexes defined on the Mongoose schemas, including the text index that inbox keyword search uses.
 
 ## 4. Gemini API key
 
@@ -53,15 +53,14 @@ Fill it in using the sections below. Every variable is described in [Configurati
    GEMINI_API_KEY="your-key"
    ```
 
-One key covers everything: the pipeline, reply drafts, the assistant and embeddings. Defaults:
+One key covers everything: the pipeline and reply drafts. Defaults:
 
 | Purpose | Model | Variable |
 |---|---|---|
-| Agent, reply drafts, RAG answers | `gemini-3.5-flash` | `GEMINI_MODEL` |
+| Reply drafts | `gemini-3.5-flash` | `GEMINI_MODEL` |
 | Pipeline steps (classify, extract, summarise, urgency, memory) | `gemini-3.5-flash-lite` | `GEMINI_PIPELINE_MODEL` |
-| Embeddings | `gemini-embedding-2` (768 dims) | `GEMINI_EMBEDDING_MODEL`, `EMBEDDING_DIMENSIONS` |
 
-> **Free tier:** free keys have per-minute and per-day limits, and Pro models may not be available at all. MailMind retries rate-limited calls with backoff, and analyses at most `AI_AUTO_PROCESS_LIMIT` (default 25) new emails automatically per sync. See [Operations → Gemini quota](12-operations.md#gemini-quota).
+> **Free tier:** free keys have per-minute and per-day limits, and Pro models may not be available at all. MailMind retries rate-limited calls with backoff, and analyses at most `AI_AUTO_PROCESS_LIMIT` (default 25) new emails automatically per sync. See [Operations → Gemini quota](10-operations.md#gemini-quota).
 
 ## 5. Gmail (Google OAuth client)
 
@@ -103,9 +102,8 @@ Open [http://localhost:3000](http://localhost:3000) → **Sign in with Google** 
 What happens next:
 
 1. You land on the dashboard immediately. In the background, MailMind imports the last `GMAIL_INITIAL_SYNC_DAYS` (30) days of mail, up to `GMAIL_SYNC_MAX_MESSAGES` (200).
-2. All imported emails are embedded for semantic search.
-3. The newest `AI_AUTO_PROCESS_LIMIT` (25) emails go through the AI pipeline. Older ones show **Not analysed yet**. Analyse them from the email page, or with **Analyse N with AI** in the inbox.
-4. While a MailMind tab is open, it checks Gmail every `GMAIL_POLL_SECONDS` (60) seconds. New mail appears with a toast and is processed automatically.
+2. The newest `AI_AUTO_PROCESS_LIMIT` (25) emails go through the AI pipeline (when `AI_AUTO_PROCESS` is on). Older ones show **Not analysed yet**. Analyse them from the email page, or with **Analyse N with AI** in the inbox.
+3. While a MailMind tab is open, it checks Gmail every `GMAIL_POLL_SECONDS` (60) seconds. New mail appears with a toast and is processed automatically.
 
 ## 7. Production build
 
@@ -114,7 +112,7 @@ npm run build
 npm start
 ```
 
-Before deploying, see [Operations → Deployment](12-operations.md#deployment) for the production checklist (HTTPS `APP_URL`, redirect URI, `ENCRYPTION_KEY`, Redis).
+Before deploying, see [Operations → Deployment](10-operations.md#deployment) for the production checklist (HTTPS `APP_URL`, redirect URI, `ENCRYPTION_KEY`, Redis).
 
 ## Useful commands
 
@@ -124,5 +122,5 @@ Before deploying, see [Operations → Deployment](12-operations.md#deployment) f
 | `npm run build` / `npm start` | Production build / server |
 | `npm run lint` | ESLint |
 | `npm run typecheck` | Generates Next route types, then runs `tsc --noEmit` |
-| `npm run db:indexes` | Creates MongoDB indexes and the Atlas vector index |
+| `npm run db:indexes` | Syncs the MongoDB indexes defined on the Mongoose schemas |
 | `npm run ai:process` | Runs the AI pipeline on pending emails from the CLI (`-- <emailId>` for one email) |

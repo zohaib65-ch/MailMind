@@ -59,8 +59,6 @@ export interface IEmail {
   isImportant: boolean;
   replyStatus: ReplyStatus;
   ai: EmailAi;
-  /** Semantic-search indexing state (chunks live in the email_embeddings collection). */
-  embedding?: { model: string; chunkCount: number; indexedAt: Date };
   createdAt: Date;
   updatedAt: Date;
 }
@@ -130,10 +128,6 @@ const emailSchema = new Schema<IEmail>(
     isImportant: { type: Boolean, default: false },
     replyStatus: { type: String, enum: REPLY_STATUSES, default: "none" },
     ai: { type: aiSchema, default: () => ({}) },
-    embedding: {
-      type: new Schema({ model: String, chunkCount: Number, indexedAt: Date }, { _id: false }),
-      required: false,
-    },
   },
   { timestamps: true },
 );

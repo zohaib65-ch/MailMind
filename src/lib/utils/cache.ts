@@ -3,8 +3,7 @@ import { randomBytes } from "node:crypto";
 import { getRedis } from "./redis";
 
 /**
- * Tiny key/value cache: Redis when configured, otherwise an in-process Map with TTLs.
- * Used for things that are cheap to lose (query embeddings, locks, index status).
+ * Short-lived locks: Redis when configured, otherwise an in-process Map with TTLs.
  */
 const memory = new Map<string, { value: string; expiresAt: number }>();
 
@@ -16,28 +15,6 @@ function memoryGet(key: string): string | null {
     return null;
   }
   return hit.value;
-}
-
-export async function cacheGet<T>(key: string): Promise<T | null> {
-  const redis = getRedis();
-  const raw = redis ? await redis.get(key).catch(() => null) : memoryGet(key);
-  return raw ? (JSON.parse(raw) as T) : null;
-}
-
-export async function cacheSet(key: string, value: unknown, ttlSeconds: number): Promise<void> {
-  const raw = JSON.stringify(value);
-  const redis = getRedis();
-  if (redis) {
-    await redis.set(key, raw, "EX", ttlSeconds).catch(() => undefined);
-    return;
-  }
-  memory.set(key, { value: raw, expiresAt: Date.now() + ttlSeconds * 1000 });
-}
-
-export async function cacheDelete(key: string): Promise<void> {
-  const redis = getRedis();
-  if (redis) await redis.del(key).catch(() => undefined);
-  memory.delete(key);
 }
 
 // Deletes the lock only if we still own it (compare-and-delete must be atomic in Redis).

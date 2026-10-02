@@ -2,7 +2,7 @@ import { CircleCheck, CircleX, Mail } from "lucide-react";
 import type { Metadata } from "next";
 import { RelativeTime } from "@/components/common/relative-time";
 import { PageHeader } from "@/components/layout/page-header";
-import { ActionButton, AiSettingsForm, MemoryList } from "@/components/settings/settings-forms";
+import { ActionButton, AiSettingsForm } from "@/components/settings/settings-forms";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -10,7 +10,6 @@ import { modelNameFor } from "@/lib/langchain/model";
 import { getEnv, isAiConfigured, isGmailConfigured } from "@/lib/utils/env";
 import { requireUser } from "@/services/auth/dal";
 import { listAccounts } from "@/services/email/account.service";
-import { getIndexStatus } from "@/services/embeddings/indexer";
 import { getUserSettings } from "@/services/user/settings.service";
 
 export const metadata: Metadata = { title: "Settings" };
@@ -26,13 +25,13 @@ function Status({ ok, children }: { ok: boolean; children: React.ReactNode }) {
 
 export default async function SettingsPage() {
   const user = await requireUser();
-  const [settings, accounts, index] = await Promise.all([getUserSettings(user.id), listAccounts(user.id), getIndexStatus(user.id)]);
+  const [settings, accounts] = await Promise.all([getUserSettings(user.id), listAccounts(user.id)]);
   const env = getEnv();
   const aiConfigured = isAiConfigured();
 
   return (
     <div className="mx-auto max-w-3xl space-y-6">
-      <PageHeader title="Settings" description="Accounts, AI behaviour, memory and search." />
+      <PageHeader title="Settings" description="Accounts and AI behaviour." />
 
       <Card>
         <CardHeader>
@@ -99,58 +98,9 @@ export default async function SettingsPage() {
           <CardDescription>How MailMind writes and what it may do on its own.</CardDescription>
         </CardHeader>
         <CardContent className="space-y-5">
-          <div className="flex flex-wrap gap-x-6 gap-y-2 rounded-lg bg-muted/50 p-3">
-            <Status ok={aiConfigured}>{aiConfigured ? "Gemini connected" : "GEMINI_API_KEY not set"}</Status>
-            {aiConfigured && (
-              <>
-                <span className="text-sm text-muted-foreground">
-                  Agent &amp; drafts: <code>{modelNameFor("agent")}</code>
-                </span>
-                <span className="text-sm text-muted-foreground">
-                  Pipeline: <code>{modelNameFor("classify")}</code>
-                </span>
-              </>
-            )}
-          </div>
           <AiSettingsForm settings={settings} />
         </CardContent>
       </Card>
-
-      <Card>
-        <CardHeader>
-          <CardTitle>Assistant memory</CardTitle>
-          <CardDescription>Facts the assistant saved when you asked it to remember something. Used in every conversation and reply.</CardDescription>
-        </CardHeader>
-        <CardContent>
-          <MemoryList memories={settings.memories} />
-        </CardContent>
-      </Card>
-
-      <Card>
-        <CardHeader>
-          <CardTitle>Semantic search index</CardTitle>
-          <CardDescription>Email chunks embedded for vector search (MongoDB Atlas Vector Search, or exact cosine as a fallback).</CardDescription>
-        </CardHeader>
-        <CardContent className="space-y-3 text-sm">
-          <div className="grid gap-1 sm:grid-cols-2">
-            <span className="text-muted-foreground">
-              Provider:{" "}
-              <span className="text-foreground">{index.configured ? "Google Gemini" : "not configured (set GEMINI_API_KEY)"}</span>
-            </span>
-            <span className="text-muted-foreground">
-              Model: <code className="text-foreground">{index.model}</code> · {index.dimensions} dims
-            </span>
-            <span className="text-muted-foreground">
-              Indexed: <span className="text-foreground">{index.indexed} / {index.total} emails</span>
-            </span>
-            <span className="text-muted-foreground">
-              Chunks: <span className="text-foreground">{index.chunks}</span>
-            </span>
-          </div>
-          <ActionButton endpoint="/api/embeddings/reindex" label="Index missing emails" successMessage="Indexing in the background" />
-        </CardContent>
-      </Card>
-
     </div>
   );
 }

@@ -14,9 +14,9 @@ export function proxy(request: NextRequest) {
   const hasSession = Boolean(request.cookies.get(SESSION_COOKIE)?.value);
   const isPublic = PUBLIC_PATHS.some((p) => pathname === p || pathname.startsWith(p));
 
-  if (pathname === "/login" && hasSession) {
-    return NextResponse.redirect(new URL("/dashboard", request.url));
-  }
+  // No "/login → /dashboard" bounce here: a cookie can exist for a session the database no
+  // longer has, and the DAL would send it straight back to /login (redirect loop). The login
+  // page does that check against the database instead.
   if (isPublic || hasSession) return NextResponse.next();
 
   if (pathname.startsWith("/api/")) {

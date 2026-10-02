@@ -89,31 +89,6 @@ export function AiSettingsForm({ settings }: { settings: UserSettingsDTO }) {
   );
 }
 
-export function MemoryList({ memories }: { memories: { id: string; text: string; createdAt: string }[] }) {
-  const router = useRouter();
-  const [items, setItems] = useState(memories);
-  async function remove(id: string) {
-    setItems((m) => m.filter((x) => x.id !== id));
-    await api(`/api/settings/memories/${id}`, { method: "DELETE" }).catch(() => toast.error("Could not delete"));
-    router.refresh();
-  }
-  if (!items.length) {
-    return <p className="text-sm text-muted-foreground">Nothing saved yet. Ask the assistant to “remember that …”.</p>;
-  }
-  return (
-    <ul className="divide-y rounded-lg border">
-      {items.map((m) => (
-        <li key={m.id} className="flex items-center gap-3 px-3 py-2 text-sm">
-          <span className="flex-1">{m.text}</span>
-          <Button variant="ghost" size="icon-xs" aria-label="Forget this" onClick={() => remove(m.id)}>
-            <Trash2 />
-          </Button>
-        </li>
-      ))}
-    </ul>
-  );
-}
-
 export function ActionButton({
   endpoint,
   label,

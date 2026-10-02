@@ -4,7 +4,7 @@ import { Search, X } from "lucide-react";
 import { useState, type FormEvent } from "react";
 import { InputGroup, InputGroupAddon, InputGroupButton, InputGroupInput } from "@/components/ui/input-group";
 
-/** Search box that submits on Enter (not on every keystroke — semantic search costs an embedding call). */
+/** Search box that submits on Enter, not on every keystroke. */
 export function SearchInput({
   defaultValue = "",
   placeholder = "Search…",

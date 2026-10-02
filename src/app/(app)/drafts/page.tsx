@@ -25,7 +25,7 @@ export default async function DraftsPage() {
         <EmptyState
           icon={FilePenLine}
           title="No drafts waiting"
-          description="When MailMind drafts a reply — automatically, from an email page, or via the assistant — it appears here for review."
+          description="When MailMind drafts a reply — automatically or from an email page — it appears here for review."
         />
       ) : (
         <ul className="space-y-6">

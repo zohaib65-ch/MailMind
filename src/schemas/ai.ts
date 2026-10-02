@@ -128,14 +128,3 @@ export const ThreadMemoryOutputSchema = z.object({
   openQuestions: z.array(z.string()).describe("Questions that are still unanswered. At most 4."),
 });
 export type ThreadMemoryOutput = z.infer<typeof ThreadMemoryOutputSchema>;
-
-// ─── RAG answer ───────────────────────────────────────────────────────────────
-
-export const RagAnswerOutputSchema = z.object({
-  answer: z
-    .string()
-    .describe("Answer in markdown. Cite sources inline as [1], [2] using the source numbers given. Say so plainly if the sources do not contain the answer."),
-  citations: z.array(z.number().int()).describe("The source numbers you actually used."),
-  confidence: z.enum(["high", "medium", "low"]).describe("How well the sources support the answer."),
-});
-export type RagAnswerOutput = z.infer<typeof RagAnswerOutputSchema>;

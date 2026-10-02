@@ -10,10 +10,10 @@ import { AiNotConfiguredError } from "@/lib/utils/errors";
  *
  *  - Pipeline steps (classify, extract, …) are small, well-specified tasks. They run on the
  *    fast, cheap pipeline model (Gemini Flash-Lite by default) with minimal thinking.
- *  - Writing replies, answering questions and running the agent need more care. They run
- *    on the main model (Gemini Flash by default) with more thinking.
+ *  - Writing replies needs more care. It runs on the main model (Gemini Flash by default)
+ *    with more thinking.
  *
- * Thinking stays internal — MailMind never displays it (the UI only shows tool activity).
+ * Thinking stays internal — MailMind never displays it.
  */
 export type ModelPurpose =
   | "classify"
@@ -21,9 +21,7 @@ export type ModelPurpose =
   | "summarize"
   | "urgency"
   | "memory"
-  | "draft"
-  | "rag"
-  | "agent";
+  | "draft";
 
 type ThinkingLevel = "MINIMAL" | "LOW" | "MEDIUM" | "HIGH";
 
@@ -34,8 +32,6 @@ const PURPOSES: Record<ModelPurpose, { tier: "pipeline" | "main"; thinking: Thin
   urgency: { tier: "pipeline", thinking: "LOW", maxTokens: 4_000 },
   memory: { tier: "pipeline", thinking: "LOW", maxTokens: 8_000 },
   draft: { tier: "main", thinking: "MEDIUM", maxTokens: 16_000 },
-  rag: { tier: "main", thinking: "LOW", maxTokens: 16_000 },
-  agent: { tier: "main", thinking: "MEDIUM", maxTokens: 16_000 },
 };
 
 export function modelNameFor(purpose: ModelPurpose): string {

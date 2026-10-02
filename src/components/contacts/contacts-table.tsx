@@ -9,7 +9,7 @@ import { api, ApiError } from "@/lib/api-client";
 import { CONTACT_RELATIONSHIPS, type ContactRelationship } from "@/schemas/common";
 import type { ContactDTO } from "@/types/email";
 
-/** The relationship column is what lets the assistant understand "my manager" or "clients". */
+/** Contacts with an editable relationship label (manager, client, …). */
 export function ContactsTable({ contacts: initial }: { contacts: ContactDTO[] }) {
   const [contacts, setContacts] = useState(initial);
 

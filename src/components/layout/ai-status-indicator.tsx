@@ -7,7 +7,7 @@ import { useEffect, useRef, useState } from "react";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { api } from "@/lib/api-client";
 
-type Status = { ai: { aiConfigured: boolean; pending: number; processing: number; failed: number }; index: { indexed: number; total: number } };
+type Status = { ai: { aiConfigured: boolean; pending: number; processing: number; failed: number } };
 
 /**
  * Shows whether the AI pipeline is working in the background. Polls while there is work in
@@ -28,8 +28,7 @@ export function AiStatusIndicator({ aiConfigured, autoProcess }: { aiConfigured:
         if (cancelled) return;
         setStatus(next);
         // "Busy" = work that is actually happening (or about to, when auto-processing is on).
-        const busy =
-          next.ai.processing > 0 || (autoProcess && next.ai.aiConfigured && next.ai.pending > 0) || next.index.indexed < next.index.total;
+        const busy = next.ai.processing > 0 || (autoProcess && next.ai.aiConfigured && next.ai.pending > 0);
         if (wasBusy.current && !busy) router.refresh();
         wasBusy.current = busy;
         timer = setTimeout(poll, busy ? 4_000 : 30_000);
@@ -52,7 +51,7 @@ export function AiStatusIndicator({ aiConfigured, autoProcess }: { aiConfigured:
             <BrainCircuit className="size-3.5" /> AI off
           </Link>
         </TooltipTrigger>
-        <TooltipContent>Set GEMINI_API_KEY to enable classification, summaries, drafts and semantic search.</TooltipContent>
+        <TooltipContent>Set GEMINI_API_KEY to enable classification, summaries and drafts.</TooltipContent>
       </Tooltip>
     );
   }

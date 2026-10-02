@@ -1,6 +1,6 @@
 import "server-only";
 import { Annotation, END, START, StateGraph, type LangGraphRunnableConfig } from "@langchain/langgraph";
-import { Email, EmailThread, ToolExecution } from "@/lib/db/models";
+import { Email, EmailThread } from "@/lib/db/models";
 import { randomToken } from "@/lib/utils/crypto";
 import { errorMessage } from "@/lib/utils/errors";
 import { createLogger } from "@/lib/utils/logger";
@@ -190,30 +190,15 @@ async function decideNode(state: State, config: LangGraphRunnableConfig): Promis
   return { decision };
 }
 
-/** Executes automatic, reversible actions through the same controlled service calls the agent uses. */
+/** Executes automatic, reversible actions through the same service calls the UI uses. */
 async function actNode(state: State, config: LangGraphRunnableConfig): Promise<Update> {
   const markImportant = state.decision?.actions.find((a) => a.type === "mark_important" && a.automatic);
   if (!markImportant) {
     emit(config, { step: "act", status: "skipped" });
     return {};
   }
-  const userId = state.ctx.user._id.toString();
-  const emailId = state.ctx.email._id.toString();
-  const started = Date.now();
   try {
-    await setEmailImportant(userId, emailId, true);
-    await ToolExecution.create({
-      userId: state.ctx.user._id,
-      source: "pipeline",
-      emailId: state.ctx.email._id,
-      toolName: "markAsImportant",
-      toolCallId: `pipeline-${state.runId}-important`,
-      input: { emailId, important: true },
-      summary: `Marked as important (${markImportant.reason.toLowerCase()})`,
-      status: "succeeded",
-      latencyMs: Date.now() - started,
-      finishedAt: new Date(),
-    });
+    await setEmailImportant(state.ctx.user._id.toString(), state.ctx.email._id.toString(), true);
     emit(config, { step: "act", status: "done", detail: "Marked as important" });
     return {};
   } catch (err) {
