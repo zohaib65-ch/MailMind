@@ -28,7 +28,7 @@ export default async function InboxPage({ searchParams }: PageProps<"/inbox">) {
   };
 
   return (
-    <div className="mx-auto max-w-5xl space-y-5">
+    <div className="space-y-5">
       <PageHeader
         title="Inbox"
         description={`${result.total} email${result.total === 1 ? "" : "s"}${query.q ? ` matching “${query.q}”` : ""}`}

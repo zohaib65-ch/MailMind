@@ -39,7 +39,7 @@ export function EmailViewer({
         <h1 className="text-xl font-semibold tracking-tight md:text-2xl">{email.subject}</h1>
         <div className="flex flex-wrap items-center gap-2 text-sm text-muted-foreground">
           <span className="font-medium text-foreground">{formatAddress(email.from)}</span>
-          <span>→ {email.to.map(formatAddress).join(", ")}</span>
+          <span className="min-w-0 break-all">→ {email.to.map(formatAddress).join(", ")}</span>
           <RelativeTime iso={email.receivedAt} mode="full" />
         </div>
         <div className="flex flex-wrap gap-1.5">
@@ -58,12 +58,12 @@ export function EmailViewer({
         </p>
       )}
 
-      <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_22rem]">
+      <div className="grid grid-cols-1 gap-6 xl:grid-cols-[minmax(0,1fr)_22rem]">
         <div className="min-w-0 space-y-4">
           <EmailThread messages={email.thread.messages} currentId={email.id} />
           <ReplyPanel email={email} initialDraft={draft} aiConfigured={aiConfigured} />
         </div>
-        <aside className="space-y-4" aria-label="AI analysis">
+        <aside className="min-w-0 space-y-4" aria-label="AI analysis">
           {email.direction === "inbound" && (
             <AiSummary
               emailId={email.id}

@@ -30,21 +30,21 @@ export function ContactsTable({ contacts: initial }: { contacts: ContactDTO[] })
             <TableHead>Name</TableHead>
             <TableHead className="hidden sm:table-cell">Company</TableHead>
             <TableHead>Relationship</TableHead>
-            <TableHead className="text-right">Emails</TableHead>
+            <TableHead className="hidden text-right sm:table-cell">Emails</TableHead>
             <TableHead className="hidden text-right md:table-cell">Last email</TableHead>
           </TableRow>
         </TableHeader>
         <TableBody>
           {contacts.map((c) => (
             <TableRow key={c.id}>
-              <TableCell>
-                <p className="font-medium">{c.name ?? c.email}</p>
-                {c.name && <p className="text-xs text-muted-foreground">{c.email}</p>}
+              <TableCell className="w-full max-w-0">
+                <p className="truncate font-medium">{c.name ?? c.email}</p>
+                {c.name && <p className="truncate text-xs text-muted-foreground">{c.email}</p>}
               </TableCell>
               <TableCell className="hidden text-muted-foreground sm:table-cell">{c.company ?? "—"}</TableCell>
               <TableCell>
                 <Select value={c.relationship} onValueChange={(v) => setRelationship(c.id, v as ContactRelationship)}>
-                  <SelectTrigger size="sm" className="w-32 capitalize" aria-label={`Relationship with ${c.name ?? c.email}`}>
+                  <SelectTrigger size="sm" className="w-28 capitalize sm:w-32" aria-label={`Relationship with ${c.name ?? c.email}`}>
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
@@ -56,7 +56,7 @@ export function ContactsTable({ contacts: initial }: { contacts: ContactDTO[] })
                   </SelectContent>
                 </Select>
               </TableCell>
-              <TableCell className="text-right tabular-nums">{c.emailCount}</TableCell>
+              <TableCell className="hidden text-right tabular-nums sm:table-cell">{c.emailCount}</TableCell>
               <TableCell className="hidden text-right text-muted-foreground md:table-cell">
                 {c.lastEmailAt ? <RelativeTime iso={c.lastEmailAt} mode="relative" /> : "—"}
               </TableCell>

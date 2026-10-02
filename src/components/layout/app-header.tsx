@@ -28,10 +28,10 @@ export function AppHeader({
   const router = useRouter();
   const [open, setOpen] = useState(false);
   return (
-    <header className="sticky top-0 z-30 flex h-14 items-center gap-3 border-b bg-background/85 px-4 backdrop-blur md:px-6">
+    <header className="sticky top-0 z-30 flex h-14 items-center gap-3 border-b bg-background/85 px-4 backdrop-blur lg:px-6">
       <Sheet open={open} onOpenChange={setOpen}>
         <SheetTrigger asChild>
-          <Button variant="ghost" size="icon" className="md:hidden" aria-label="Open navigation">
+          <Button variant="ghost" size="icon" className="lg:hidden" aria-label="Open navigation">
             <Menu />
           </Button>
         </SheetTrigger>

@@ -32,22 +32,24 @@ export default async function DashboardPage() {
       />
       {!aiConfigured && <AiNotConfiguredNotice />}
 
-      <section aria-label="Inbox summary" className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-5">
-        <StatCard label="Total emails" value={stats.total} icon={Mail} href="/inbox?view=all" />
-        <StatCard label="Unread" value={stats.unread} icon={MailOpen} href="/inbox?view=unread" />
-        <StatCard label="Important" value={stats.important} icon={Star} href="/inbox?view=important" />
-        <StatCard label="Needs reply" value={stats.needsReply} icon={Reply} href="/inbox?view=needs_reply" tone="attention" />
-        <StatCard
-          label="AI processed"
-          value={stats.aiProcessed}
-          icon={BrainCircuit}
-          tone="ai"
-          hint={stats.aiFailed ? `${stats.aiFailed} failed` : undefined}
-        />
+      <section aria-label="Inbox summary" className="@container">
+        <div className="grid grid-cols-2 gap-3 @lg:grid-cols-3 @4xl:grid-cols-5">
+          <StatCard label="Total emails" value={stats.total} icon={Mail} href="/inbox?view=all" />
+          <StatCard label="Unread" value={stats.unread} icon={MailOpen} href="/inbox?view=unread" />
+          <StatCard label="Important" value={stats.important} icon={Star} href="/inbox?view=important" />
+          <StatCard label="Needs reply" value={stats.needsReply} icon={Reply} href="/inbox?view=needs_reply" tone="attention" />
+          <StatCard
+            label="AI processed"
+            value={stats.aiProcessed}
+            icon={BrainCircuit}
+            tone="ai"
+            hint={stats.aiFailed ? `${stats.aiFailed} failed` : undefined}
+          />
+        </div>
       </section>
 
-      <div className="grid gap-6 lg:grid-cols-3">
-        <div className="space-y-6 lg:col-span-2">
+      <div className="grid grid-cols-1 gap-6 xl:grid-cols-3">
+        <div className="min-w-0 space-y-6 xl:col-span-2">
           <Card>
             <CardHeader>
               <CardTitle>Needs your attention</CardTitle>
@@ -68,7 +70,7 @@ export default async function DashboardPage() {
           </Card>
         </div>
 
-        <div className="space-y-6">
+        <div className="min-w-0 space-y-6">
           {stats.pendingDrafts > 0 && (
             <Card className="border-primary/30 bg-primary/5">
               <CardHeader>

@@ -20,7 +20,7 @@ export default async function AppLayout({ children }: LayoutProps<"/">) {
           autoProcess={getEnv().AI_AUTO_PROCESS}
           pollSeconds={getEnv().GMAIL_POLL_SECONDS}
         />
-        <main className="flex-1 px-4 py-6 md:px-8">{children}</main>
+        <main className="flex-1 px-4 py-6 sm:px-6 lg:px-8">{children}</main>
       </div>
     </div>
   );

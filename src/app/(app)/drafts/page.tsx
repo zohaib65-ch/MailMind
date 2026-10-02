@@ -16,7 +16,7 @@ export default async function DraftsPage() {
   const user = await requireUser();
   const drafts = await listDrafts(user.id);
   return (
-    <div className="mx-auto max-w-3xl space-y-5">
+    <div className=" space-y-5">
       <PageHeader
         title="Drafts"
         description="Replies prepared by AI or by you. Nothing here is sent until you click Send."

@@ -41,7 +41,7 @@ export function SidebarNav({ counts, onNavigate }: { counts: SidebarCounts; onNa
 
 export function AppSidebar({ counts }: { counts: SidebarCounts }) {
   return (
-    <aside className="sticky top-0 hidden h-screen w-60 shrink-0 flex-col gap-6 overflow-y-auto border-r bg-sidebar p-4 md:flex">
+    <aside className="sticky top-0 hidden h-screen w-60 shrink-0 flex-col gap-6 overflow-y-auto border-r bg-sidebar p-4 lg:flex">
       <Link href="/dashboard" className="px-1.5">
         <Logo />
       </Link>

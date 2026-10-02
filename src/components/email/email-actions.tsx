@@ -54,7 +54,8 @@ export function EmailActions({ email, aiConfigured }: { email: EmailDetailDTO; a
             </Button>
             {aiConfigured && (
               <Button size="sm" variant="outline" onClick={scrollToReply}>
-                <Sparkles /> Generate AI reply
+                <Sparkles /> <span className="sm:hidden">AI reply</span>
+                <span className="hidden sm:inline">Generate AI reply</span>
               </Button>
             )}
           </>
@@ -67,7 +68,8 @@ export function EmailActions({ email, aiConfigured }: { email: EmailDetailDTO; a
             await patch({ isArchived: !state.archived }, state.archived ? "Moved back to inbox" : "Archived");
           }}
         >
-          {state.archived ? <ArchiveRestore /> : <Archive />} {state.archived ? "Unarchive" : "Archive"}
+          {state.archived ? <ArchiveRestore /> : <Archive />}
+          <span className="sr-only md:not-sr-only">{state.archived ? "Unarchive" : "Archive"}</span>
         </Button>
         <Button
           size="sm"
@@ -78,10 +80,11 @@ export function EmailActions({ email, aiConfigured }: { email: EmailDetailDTO; a
             await patch({ isImportant: !state.important }, state.important ? "Unmarked important" : "Marked as important");
           }}
         >
-          <Star className={cn(state.important && "fill-amber-400 text-amber-400")} /> {state.important ? "Important" : "Mark important"}
+          <Star className={cn(state.important && "fill-amber-400 text-amber-400")} />
+          <span className="sr-only md:not-sr-only">{state.important ? "Important" : "Mark important"}</span>
         </Button>
         <Button size="sm" variant="ghost" onClick={() => patch({ isRead: false }, "Marked as unread")}>
-          <Mail /> Mark unread
+          <Mail /> <span className="sr-only md:not-sr-only">Mark unread</span>
         </Button>
         {email.replyStatus === "needs_reply" && (
           <Button size="sm" variant="ghost" onClick={() => patch({ replyHandled: true }, "Marked as handled")}>
@@ -89,8 +92,9 @@ export function EmailActions({ email, aiConfigured }: { email: EmailDetailDTO; a
           </Button>
         )}
         {aiConfigured && (
-          <Button size="sm" variant="ghost" onClick={analyse} disabled={pipeline.running} className="sm:ml-auto">
-            <WandSparkles /> {email.ai.status === "processed" ? "Re-analyse" : "Analyse with AI"}
+          <Button size="sm" variant="ghost" onClick={analyse} disabled={pipeline.running} className="xl:ml-auto">
+            <WandSparkles />
+            <span className="sr-only md:not-sr-only">{email.ai.status === "processed" ? "Re-analyse" : "Analyse with AI"}</span>
           </Button>
         )}
       </div>

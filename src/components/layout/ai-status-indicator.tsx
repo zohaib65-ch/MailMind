@@ -47,7 +47,7 @@ export function AiStatusIndicator({ aiConfigured, autoProcess }: { aiConfigured:
     return (
       <Tooltip>
         <TooltipTrigger asChild>
-          <Link href="/settings" className="flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-xs text-muted-foreground">
+          <Link href="/settings" className="flex items-center gap-1.5 whitespace-nowrap rounded-full border px-2.5 py-1 text-xs text-muted-foreground">
             <BrainCircuit className="size-3.5" /> AI off
           </Link>
         </TooltipTrigger>
@@ -60,7 +60,7 @@ export function AiStatusIndicator({ aiConfigured, autoProcess }: { aiConfigured:
   const pending = status?.ai.pending ?? 0;
   if (!processing && pending && !autoProcess) {
     return (
-      <Link href="/inbox" className="flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-xs text-muted-foreground">
+      <Link href="/inbox" className="flex items-center gap-1.5 whitespace-nowrap rounded-full border px-2.5 py-1 text-xs text-muted-foreground">
         <BrainCircuit className="size-3.5 text-primary" /> {pending} not analysed
       </Link>
     );
@@ -68,13 +68,13 @@ export function AiStatusIndicator({ aiConfigured, autoProcess }: { aiConfigured:
   const working = processing + (autoProcess ? pending : 0);
   if (!working) {
     return (
-      <span className="flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-xs text-muted-foreground">
+      <span className="flex items-center gap-1.5 whitespace-nowrap rounded-full border px-2.5 py-1 text-xs text-muted-foreground">
         <BrainCircuit className="size-3.5 text-primary" /> AI ready
       </span>
     );
   }
   return (
-    <span className="flex items-center gap-1.5 rounded-full bg-primary/10 px-2.5 py-1 text-xs font-medium text-primary" aria-live="polite">
+    <span className="flex items-center gap-1.5 whitespace-nowrap rounded-full bg-primary/10 px-2.5 py-1 text-xs font-medium text-primary" aria-live="polite">
       <LoaderCircle className="size-3.5 animate-spin" /> Analysing {working} email{working === 1 ? "" : "s"}…
     </span>
   );

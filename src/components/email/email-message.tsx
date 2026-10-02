@@ -30,7 +30,8 @@ export function EmailMessage({ message, highlighted = false, collapsed = false }
               {displayName(message.from)}
               {fromUser && <span className="ml-1.5 text-xs font-normal text-muted-foreground">(you)</span>}
             </p>
-            <RelativeTime iso={message.receivedAt} mode="full" className="ml-auto shrink-0 text-xs text-muted-foreground" />
+            <RelativeTime iso={message.receivedAt} className="ml-auto shrink-0 text-xs text-muted-foreground sm:hidden" />
+            <RelativeTime iso={message.receivedAt} mode="full" className="ml-auto hidden shrink-0 text-xs text-muted-foreground sm:inline" />
           </div>
           <p className="truncate text-xs text-muted-foreground">
             to {message.to.map(formatAddress).join(", ")}

@@ -12,7 +12,7 @@ export default async function ContactsPage() {
   const user = await requireUser();
   const contacts = await searchContacts(user.id, { limit: 200 });
   return (
-    <div className="mx-auto max-w-4xl space-y-5">
+    <div className="space-y-5">
       <PageHeader
         title="Contacts"
         description="Everyone you email with. Set relationships to keep track of who is who."

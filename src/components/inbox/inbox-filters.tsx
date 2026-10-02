@@ -31,8 +31,12 @@ export function InboxFilters() {
 
   return (
     <div className="flex flex-col gap-3 lg:flex-row lg:items-center">
-      <Tabs value={params.get("view") ?? "inbox"} onValueChange={(v) => update("view", v === "inbox" ? null : v)}>
-        <TabsList className="flex-wrap">
+      <Tabs
+        value={params.get("view") ?? "inbox"}
+        onValueChange={(v) => update("view", v === "inbox" ? null : v)}
+        className="-mx-4 overflow-x-auto px-4 [scrollbar-width:none] sm:mx-0 sm:px-0"
+      >
+        <TabsList className="w-max">
           {VIEWS.map((v) => (
             <TabsTrigger key={v.value} value={v.value}>
               {v.label}

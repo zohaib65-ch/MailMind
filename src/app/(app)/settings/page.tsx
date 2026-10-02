@@ -30,7 +30,7 @@ export default async function SettingsPage() {
   const aiConfigured = isAiConfigured();
 
   return (
-    <div className="mx-auto max-w-3xl space-y-6">
+    <div className="space-y-6">
       <PageHeader title="Settings" description="Accounts and AI behaviour." />
 
       <Card>
@@ -42,7 +42,7 @@ export default async function SettingsPage() {
           {accounts.map((a) => (
             <div key={a.id} className="flex flex-wrap items-center gap-3 rounded-lg border p-3">
               <Mail className="size-4 text-muted-foreground" />
-              <div className="min-w-0 flex-1">
+              <div className="min-w-48 flex-1">
                 <p className="truncate text-sm font-medium">{a.emailAddress}</p>
                 <p className="text-xs text-muted-foreground">
                   Gmail

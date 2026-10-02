@@ -18,7 +18,7 @@ export function UrgencySummary({ data }: { data: { urgency: Urgency; count: numb
         <CardTitle>Urgency</CardTitle>
         <CardDescription>Open emails, as judged by the urgency detector</CardDescription>
       </CardHeader>
-      <CardContent className="grid grid-cols-3 gap-2">
+      <CardContent className="grid sm:grid-cols-3 grid-cols-1 gap-2">
         {LEVELS.map((level) => (
           <Link
             key={level.urgency}
