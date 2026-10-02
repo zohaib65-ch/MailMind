@@ -1,4 +1,4 @@
-import { htmlToText, makeSnippet, normalizeWhitespace } from "@/lib/utils/email-text";
+import { htmlToText, makeSnippet, normalizeWhitespace, stripQuotedReply } from "@/lib/utils/email-text";
 import type { EmailAddress } from "@/schemas/common";
 import type { ProviderMessage } from "./providers/types";
 
@@ -53,7 +53,7 @@ export function parseProviderMessage(message: ProviderMessage): ParsedEmail {
     cc: message.cc,
     subject: message.subject.trim() || "(no subject)",
     bodyText,
-    snippet: makeSnippet(bodyText),
+    snippet: makeSnippet(stripQuotedReply(bodyText) || bodyText),
     receivedAt: message.date,
     labels: message.labels,
     // The user has obviously "read" what they sent.

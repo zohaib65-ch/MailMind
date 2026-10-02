@@ -1,4 +1,5 @@
 import { convert } from "html-to-text";
+import { isQuoteLine, splitQuotedReply } from "./quoted-text";
 export { formatAddressHeader, parseAddressList } from "./address";
 
 /**
@@ -31,27 +32,16 @@ export function makeSnippet(text: string, max = 180): string {
   return flat.length > max ? `${flat.slice(0, max - 1).trimEnd()}…` : flat;
 }
 
-const QUOTE_HEADERS = [
-  /^On .{3,200}wrote:\s*$/m, // Gmail / Apple Mail
-  /^-{2,}\s*Original Message\s*-{2,}/im, // Outlook
-  /^From:\s.+\n(?:Sent|Date):\s.+/m, // Outlook header block
-  /^_{5,}\s*$/m,
-];
-
 /**
  * Removes quoted previous messages and the signature delimiter block, leaving only what
  * the sender actually wrote in this message. Previous messages in the thread are given to
  * the AI separately (as thread memory), so sending them again would only waste tokens.
  */
 export function stripQuotedReply(text: string): string {
-  let body = text.replace(/\r\n?/g, "\n");
-  for (const header of QUOTE_HEADERS) {
-    const match = header.exec(body);
-    if (match && match.index > 0) body = body.slice(0, match.index);
-  }
+  let body = splitQuotedReply(text).body;
   body = body
     .split("\n")
-    .filter((line) => !line.trimStart().startsWith(">"))
+    .filter((line) => !isQuoteLine(line))
     .join("\n");
   const sigIndex = body.search(/^-- ?$/m);
   if (sigIndex > 0) body = body.slice(0, sigIndex);
