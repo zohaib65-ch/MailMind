@@ -2,6 +2,7 @@ import { CircleCheck, CircleX, Mail } from "lucide-react";
 import type { Metadata } from "next";
 import { RelativeTime } from "@/components/common/relative-time";
 import { PageHeader } from "@/components/layout/page-header";
+import { InstallApp } from "@/components/settings/install-app";
 import { ActionButton, AiSettingsForm } from "@/components/settings/settings-forms";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -31,7 +32,7 @@ export default async function SettingsPage() {
 
   return (
     <div className="space-y-6">
-      <PageHeader title="Settings" description="Accounts and AI behaviour." />
+      <PageHeader title="Settings" description="Accounts, AI behaviour and installing the app." />
 
       <Card>
         <CardHeader>
@@ -99,6 +100,16 @@ export default async function SettingsPage() {
         </CardHeader>
         <CardContent className="space-y-5">
           <AiSettingsForm settings={settings} />
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader>
+          <CardTitle>App</CardTitle>
+          <CardDescription>Install MailMind to open it in its own window, like a desktop or phone app.</CardDescription>
+        </CardHeader>
+        <CardContent>
+          <InstallApp />
         </CardContent>
       </Card>
     </div>

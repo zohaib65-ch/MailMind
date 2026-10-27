@@ -7,7 +7,9 @@ import { NextResponse, type NextRequest } from "next/server";
  * page and API call, so a forged cookie gets nothing.
  */
 const SESSION_COOKIE = "mm_session";
-const PUBLIC_PATHS = ["/login", "/api/auth/", "/api/health"];
+// The web app manifest is fetched by the browser without cookies, so it must be public or
+// installing would be redirected to /login.
+const PUBLIC_PATHS = ["/login", "/api/auth/", "/api/health", "/manifest.webmanifest"];
 
 export function proxy(request: NextRequest) {
   const { pathname, search } = request.nextUrl;
